@@ -1,6 +1,27 @@
+# Byte-compiled / optimized / DLL files
 __pycache__/
-*.pyc
-.DS_Store
+*.py[cod]
+*$py.class
+
+# Local answer files & configs
 回答.json
 *.txt.local
+*.log
+
+# Caches and OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE & Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Local runtime data & caches
 voice/breeze/
+temp/
+tmp/
+.venv/
+venv/
