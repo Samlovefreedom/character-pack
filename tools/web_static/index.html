@@ -641,7 +641,7 @@
 
             <div class="form-group">
               <label class="form-label">音色名称 (Voice ID)</label>
-              <input type="text" id="voice-name" class="input-control" value="dafeiyu" placeholder="例如: dafeiyu 或 custom_voice">
+              <input type="text" id="voice-name" class="input-control" value="" placeholder="请输入自定义音色代号，例如: hutao、dafeiyu">
             </div>
 
             <div class="form-group">
@@ -670,7 +670,7 @@
               <div class="card-title" style="font-size: 15px;">🎧 在线试听与绑定</div>
               <div class="form-group" style="margin-top: 8px;">
                 <label class="form-label">试听台词</label>
-                <input type="text" id="voice-preview-text" class="input-control" value="在呢在呢，这么晚还不睡，是不是又在偷偷吃夜宵？">
+                <input type="text" id="voice-preview-text" class="input-control" value="" placeholder="请输入试听台词，例如: 你好呀，今天想听我说点什么？">
               </div>
               <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
                 <button class="btn btn-outline" id="btn-preview-speech" onclick="previewVoiceSpeech()">
@@ -1246,9 +1246,19 @@
 
     // 试听合成（修复音频试听问题，支持即时播放）
     async function previewVoiceSpeech(customVoiceName = null, customButton = null) {
-      const voice_name = customVoiceName || document.getElementById('voice-name').value.trim();
-      const text = document.getElementById('voice-preview-text').value.trim() || "在呢在呢，今天想听我说点什么？";
-      
+      const voiceInput = document.getElementById('voice-name');
+      const voice_name = (customVoiceName || voiceInput.value).trim();
+      const textInput = document.getElementById('voice-preview-text');
+      const text = textInput.value.trim() || "你好呀，今天想听我说点什么？";
+
+      if (!voice_name) {
+        showToast("请在音色列表中点击试听，或在下方输入音色名称！", "warning");
+        return;
+      }
+      if (customVoiceName && !voiceInput.value) {
+        voiceInput.value = customVoiceName;
+      }
+
       const mainBtn = document.getElementById('btn-preview-speech');
       const targetBtn = customButton || mainBtn;
       const originalText = targetBtn ? targetBtn.innerHTML : '';
@@ -1269,7 +1279,11 @@
         if (out.ok && out.audio_base64) {
           player.src = "data:audio/wav;base64," + out.audio_base64;
           player.style.display = 'inline-block';
-          await player.play();
+          try {
+            await player.play();
+          } catch (pe) {
+            console.log("Audio autoplay prevented", pe);
+          }
           showToast(`正在播放【${voice_name}】试听音频 🔊`, "info", 3000);
         } else {
           showToast("试听合成失败: " + (out.message || "未知错误"), "error");

@@ -1,6 +1,7 @@
 """AstrBot 角色个性化配置中心 Web 服务端。
 基于 Python 原生 http.server，零额外依赖。
 """
+import base64
 import glob
 import io
 import json
@@ -660,9 +661,12 @@ class ConfigRequestHandler(BaseHTTPRequestHandler):
         if path == "/api/voice/clone":
             fields, files = parse_multipart(self.rfile, self.headers)
             file_item = files.get("audio")
-            ref_text = fields.get("ref_text", "").strip()
-            voice_name = fields.get("voice_name", "dafeiyu").strip()
+            ref_text = (fields.get("ref_text") or "").strip()
+            voice_name = (fields.get("voice_name") or fields.get("name") or "").strip()
 
+            if not voice_name:
+                self.send_json({"ok": False, "message": "音色名称不能为空"}, 400)
+                return
             if not file_item or not file_item.get("data"):
                 self.send_json({"ok": False, "message": "未接收到音频文件"}, 400)
                 return
@@ -683,18 +687,21 @@ class ConfigRequestHandler(BaseHTTPRequestHandler):
 
         # 5. 试听生成
         if path == "/api/voice/preview":
-            length = int(self.headers.get("Content-Length", 0))
-            body = json.loads(self.rfile.read(length).decode("utf-8")) if length else {}
-            voice_name = body.get("voice_name", "dafeiyu")
-            text = body.get("text", "在呢在呢，这么晚还不睡，是不是又在偷偷吃夜宵？")
+            try:
+                length = int(self.headers.get("Content-Length", 0))
+                body = json.loads(self.rfile.read(length).decode("utf-8")) if length else {}
+                voice_name = (body.get("voice_name") or "").strip() or "dafeiyu"
+                text = (body.get("text") or "").strip() or "你好呀，今天想听我说点什么？"
 
-            breeze = STATE["breeze_client"]
-            ok, wav_data = breeze.speak(voice_name, text)
-            if ok:
-                b64 = base64.b64encode(wav_data).decode("ascii")
-                self.send_json({"ok": True, "audio_base64": b64, "voice_name": voice_name})
-            else:
-                self.send_json({"ok": False, "message": str(wav_data)}, 500)
+                breeze = STATE["breeze_client"]
+                ok, wav_data = breeze.speak(voice_name, text)
+                if ok:
+                    b64 = base64.b64encode(wav_data).decode("ascii")
+                    self.send_json({"ok": True, "audio_base64": b64, "voice_name": voice_name})
+                else:
+                    self.send_json({"ok": False, "message": str(wav_data)}, 500)
+            except Exception as e:
+                self.send_json({"ok": False, "message": f"试听合成异常: {e}"}, 500)
             return
 
         # 6. 绑定 Breeze 音色到 AstrBot
