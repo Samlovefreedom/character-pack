@@ -352,6 +352,176 @@ def test_breeze_url(url="http://127.0.0.1:8137"):
         return False
 
 
+def find_ffmpeg_path():
+    """查找本地可用的 FFmpeg 程序路径。"""
+    p = shutil.which("ffmpeg")
+    if p:
+        return p
+    for cand in [
+        os.path.expanduser("~\\scoop\\shims\\ffmpeg.exe"),
+        "C:\\ffmpeg\\bin\\ffmpeg.exe",
+        "D:\\ffmpeg\\bin\\ffmpeg.exe",
+        "C:\\ProgramData\\chocolatey\\bin\\ffmpeg.exe"
+    ]:
+        if os.path.exists(cand):
+            return cand
+    return None
+
+
+def check_breeze_environment():
+    """检测 Breeze TTS 2 本地语音环境的完整性（安装目录、模型、转码依赖、运行状态）。"""
+    res = {
+        "installed": False,
+        "install_path": "",
+        "exe_path": "",
+        "has_model": False,
+        "model_name": "",
+        "has_ffmpeg": False,
+        "ffmpeg_path": "",
+        "running": False,
+        "start_cmd": "",
+        "ready": False
+    }
+
+    # 1. 查找 Breeze 安装目录与主程序
+    candidates = [
+        "D:\\breeze-tts",
+        "C:\\breeze-tts",
+        "E:\\breeze-tts",
+        os.path.expanduser("~\\breeze-tts")
+    ]
+    for d in candidates:
+        if os.path.exists(d):
+            exes = glob.glob(os.path.join(d, "**", "breeze-server.exe"), recursive=True)
+            models = glob.glob(os.path.join(d, "**", "*.gguf"), recursive=True)
+            if exes:
+                res["installed"] = True
+                res["install_path"] = d
+                res["exe_path"] = exes[0]
+                if models:
+                    res["has_model"] = True
+                    res["model_name"] = os.path.basename(models[0])
+                cmd = os.path.join(d, "start-breeze.cmd")
+                if os.path.exists(cmd):
+                    res["start_cmd"] = cmd
+                break
+
+    # 2. 检查 FFmpeg
+    ff = find_ffmpeg_path()
+    if ff:
+        res["has_ffmpeg"] = True
+        res["ffmpeg_path"] = ff
+
+    # 3. 检查服务运行状态
+    res["running"] = test_breeze_url()
+
+    # 4. 全部前置条件是否就绪 (已安装且有模型且服务已在运行)
+    res["ready"] = res["installed"] and res["has_model"] and res["running"]
+    return res
+
+
+def start_breeze_service():
+    """在后台拉起 Breeze 本地语音引擎。"""
+    import time
+    info = check_breeze_environment()
+    if info["running"]:
+        return True, "Breeze 语音服务已经在运行中 (8137)"
+    
+    start_cmd = info.get("start_cmd")
+    work_dir = info.get("install_path")
+    if not start_cmd or not os.path.exists(start_cmd):
+        return False, "未找到 Breeze 启动脚本 start-breeze.cmd，请先安装 Breeze 本地语音环境"
+
+    try:
+        creationflags = 0
+        if os.name == "nt":
+            creationflags = subprocess.CREATE_NEW_CONSOLE
+        subprocess.Popen(
+            ["cmd.exe", "/c", start_cmd],
+            cwd=work_dir,
+            creationflags=creationflags
+        )
+        for _ in range(16):
+            time.sleep(0.5)
+            if test_breeze_url():
+                return True, "Breeze 语音服务已成功启动！(端口 8137)"
+        return True, "启动指令已发出，模型正在加载预热中（稍候 10~20 秒将自动就绪）"
+    except Exception as e:
+        return False, f"拉起 Breeze 失败: {e}"
+
+
+def check_plugins_completeness(client=None):
+    """检测 8 大基础插件及系统配置是否已完整就绪。"""
+    required = {
+        "astrbot_plugin_group_chat_plus": "群聊插话与打字模拟",
+        "astrbot_plugin_livingmemory": "长期记忆对话沉淀",
+        "meme_manager": "表情包发送与规则配置",
+        "astrbot_plugin_qzone": "QQ空间说说管理",
+        "astrbot_plugin_qqprofile": "QQ签名与资料维护",
+        "astrbot_plugin_proactive_chat": "定时主动找主人私聊",
+        "astrbot_plugin_dafeiyu_clean": "防串台与系统标签清理",
+        "astrbot_plugin_dafeiyu_signature": "防伪签名规则"
+    }
+
+    installed_set = set()
+    configured_set = set()
+
+    # 1. 在线获取
+    if client and client.token:
+        try:
+            r = client.get_installed_plugins()
+            for p in r:
+                if isinstance(p, dict) and p.get("name"):
+                    installed_set.add(p["name"])
+        except Exception:
+            pass
+
+    # 2. 从本地实例目录读取（离线或辅助验证）
+    instances = detect_astrbot_instances()
+    if instances:
+        inst_dir = instances[0]["dir"]
+        for cand in [os.path.join(inst_dir, "core", "data"), os.path.join(inst_dir, "data")]:
+            p_cand = os.path.join(cand, "plugins")
+            c_cand = os.path.join(cand, "config")
+            if os.path.exists(p_cand):
+                for name in os.listdir(p_cand):
+                    installed_set.add(name)
+            if os.path.exists(c_cand):
+                for name in os.listdir(c_cand):
+                    base_name = name.replace("_config.json", "")
+                    configured_set.add(base_name)
+
+    plugin_status = {}
+    missing = []
+    unconfigured = []
+
+    for pid, desc in required.items():
+        is_inst = pid in installed_set
+        is_conf = (pid in configured_set) or (pid in ("astrbot_plugin_dafeiyu_clean", "astrbot_plugin_dafeiyu_signature"))
+        
+        plugin_status[pid] = {
+            "name": pid,
+            "desc": desc,
+            "installed": is_inst,
+            "configured": is_conf if is_inst else False
+        }
+        if not is_inst:
+            missing.append(pid)
+        elif not is_conf:
+            unconfigured.append(pid)
+
+    all_done = (len(missing) == 0) and (len(unconfigured) == 0)
+
+    return {
+        "is_complete": all_done,
+        "total": len(required),
+        "installed_count": len(required) - len(missing),
+        "missing_plugins": missing,
+        "unconfigured_plugins": unconfigured,
+        "plugins": plugin_status
+    }
+
+
 class AstrBotClient:
     def __init__(self, base_url):
         self.root = base_url.rstrip("/")
@@ -373,7 +543,14 @@ class AstrBotClient:
             text = e.read().decode("utf-8", "replace")
             code = e.code
         except Exception as e:
-            return {"status": "error", "message": f"连接失败: {e}", "_http": 0}
+            err_str = str(e)
+            if "10061" in err_str or "积极拒绝" in err_str or "Connection refused" in err_str:
+                return {
+                    "status": "error",
+                    "message": "无法连接到 AstrBot 服务（目标计算机积极拒绝）。请确认已先在电脑上手动启动 AstrBot，并且后台端口正确。",
+                    "_http": 0
+                }
+            return {"status": "error", "message": f"连接失败: {err_str}", "_http": 0}
 
         try:
             out = json.loads(text) if text else {}

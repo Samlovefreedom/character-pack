@@ -42,6 +42,10 @@ from web_adapter import (
     detect_napcat,
     sync_napcat_and_astrbot,
     scan_active_astrbot_url,
+    check_breeze_environment,
+    start_breeze_service,
+    check_plugins_completeness,
+    find_ffmpeg_path,
     AstrBotClient,
     BreezeClient,
 )
@@ -54,6 +58,7 @@ STATE = {
     "owner_qq": "",
     "astrbot_client": None,
     "breeze_client": BreezeClient("http://127.0.0.1:8137"),
+    "voice_enabled": False,
 }
 
 
@@ -70,7 +75,7 @@ def convert_to_wav(audio_bytes, orig_filename):
     ext = os.path.splitext(orig_filename)[1].lower()
     if ext == ".wav":
         return audio_bytes, "audio.wav"
-    ff = shutil.which("ffmpeg")
+    ff = find_ffmpeg_path()
     if not ff:
         return audio_bytes, orig_filename
     temp_in = os.path.join(tempfile.gettempdir(), f"temp_in_{int(time.time())}{ext}")
@@ -265,28 +270,47 @@ class ConfigRequestHandler(BaseHTTPRequestHandler):
                 "ok": True,
                 "voices": voices_list,
                 "current_active_voice": current_tts_voice,
-                "ffmpeg_available": bool(shutil.which("ffmpeg"))
+                "ffmpeg_available": bool(find_ffmpeg_path())
             })
             return
 
+        # 检查基础插件完整性
+        if path == "/api/plugins/check":
+            client = STATE.get("astrbot_client")
+            comp = check_plugins_completeness(client)
+            self.send_json({"ok": True, "data": comp})
+            return
+
+        # 单一权威参考案例：大肥鱼
+        if path == "/api/persona/reference":
+            ref_path = os.path.join(PACK_ROOT, "persona", "大肥鱼.md")
+            content = ""
+            if os.path.exists(ref_path):
+                with open(ref_path, "r", encoding="utf-8") as f:
+                    content = f.read()
+            self.send_json({
+                "ok": True,
+                "persona_id": "大肥鱼",
+                "name": "大肥鱼 (傲娇软萌吃货AI少女)",
+                "prompt": content
+            })
+            return
+
+        # 语音模块前置条件环境自检
+        if path == "/api/voice/env":
+            info = check_breeze_environment()
+            info["voice_enabled"] = STATE.get("voice_enabled", False)
+            self.send_json({"ok": True, "data": info})
+            return
+
         if path == "/api/plugins/status":
-            client = STATE["astrbot_client"]
-            if not client or not client.token:
-                self.send_json({"ok": False, "message": "尚未登录 AstrBot"}, 401)
-                return
-            pack = load_pack_json()
-            installed = {p.get("name") for p in client.get_installed_plugins()}
-            required_plugins = [p["name"] for p in pack.get("plugins", [])]
-            for d in glob.glob(os.path.join(PACK_ROOT, "plugins", "*")):
-                if os.path.isdir(d) and os.path.exists(os.path.join(d, "metadata.yaml")):
-                    required_plugins.append(os.path.basename(d))
-            
-            status_map = {name: (name in installed) for name in required_plugins}
-            all_ready = all(status_map.values())
+            client = STATE.get("astrbot_client")
+            comp = check_plugins_completeness(client)
+            status_map = {k: v["installed"] for k, v in comp["plugins"].items()}
             self.send_json({
                 "ok": True,
                 "status": status_map,
-                "all_ready": all_ready
+                "all_ready": comp["is_complete"]
             })
             return
 
@@ -299,11 +323,19 @@ class ConfigRequestHandler(BaseHTTPRequestHandler):
         # 1. 登录
         if path == "/api/login":
             length = int(self.headers.get("Content-Length", 0))
-            body = json.loads(self.rfile.read(length).decode("utf-8"))
+            body = json.loads(self.rfile.read(length).decode("utf-8")) if length else {}
             base_url = body.get("base_url", "http://127.0.0.1:6185").rstrip("/")
             username = body.get("username", "astrbot")
             password = body.get("password", "")
             owner_qq = body.get("owner_qq", "")
+
+            # 先快速探测 AstrBot 是否已经启动
+            if not test_astrbot_url(base_url):
+                self.send_json({
+                    "ok": False,
+                    "message": f"无法连接到 AstrBot 服务 ({base_url})。请确认已先在电脑上手动启动 AstrBot，并且后台端口正确。"
+                }, 400)
+                return
 
             client = AstrBotClient(base_url)
             ok, msg = client.login(username, password)
@@ -316,11 +348,26 @@ class ConfigRequestHandler(BaseHTTPRequestHandler):
                 self.send_json({"ok": False, "message": msg}, 400)
             return
 
-        # 2. 部署基础底座插件
+        # 2. 部署基础底座插件（已就绪则跳过，未配置则一键补齐）
         if path == "/api/setup/base":
             client = STATE["astrbot_client"]
             if not client or not client.token:
-                self.send_json({"ok": False, "message": "请先完成 AstrBot 登录验证"}, 401)
+                self.send_json({"ok": False, "message": "请先在电脑上手动启动 AstrBot，并在上方验证登录"}, 401)
+                return
+
+            length = int(self.headers.get("Content-Length", 0))
+            body = json.loads(self.rfile.read(length).decode("utf-8")) if length else {}
+            force = body.get("force", False)
+
+            # 先自检当前是否已配置完成
+            comp = check_plugins_completeness(client)
+            if not force and comp["is_complete"]:
+                self.send_json({
+                    "ok": True,
+                    "already_complete": True,
+                    "message": "检测到所有 8 个基础插件及配置已完整就绪，无需重复配置！",
+                    "logs": ["✔ 全部基础插件（群聊插话、长期记忆、表情包底座、主动聊天、QQ空间/资料、防串台规则等）均已就绪，无需重新配置。"]
+                })
                 return
 
             pack = load_pack_json()
@@ -587,6 +634,31 @@ class ConfigRequestHandler(BaseHTTPRequestHandler):
                 client.update_default_config(cfg)
 
             self.send_json({"ok": True, "message": f"已将音色 [{voice_name}] 设为 AstrBot 默认语音！"})
+            return
+
+        # 6.1 开启/关闭语音克隆模块
+        if path == "/api/voice/toggle":
+            length = int(self.headers.get("Content-Length", 0))
+            body = json.loads(self.rfile.read(length).decode("utf-8")) if length else {}
+            enabled = bool(body.get("enabled", False))
+            STATE["voice_enabled"] = enabled
+
+            # 如果用户关闭语音模块，且 AstrBot 在线，则关闭 AstrBot TTS 发音
+            if not enabled:
+                client = STATE.get("astrbot_client")
+                if client and client.token:
+                    cfg = client.get_default_config()
+                    if cfg and "provider_tts_settings" in cfg:
+                        cfg["provider_tts_settings"]["enable"] = False
+                        client.update_default_config(cfg)
+
+            self.send_json({"ok": True, "voice_enabled": enabled, "message": "已更新语音模块状态"})
+            return
+
+        # 6.2 一键启动 Breeze 语音引擎
+        if path == "/api/voice/start":
+            ok, msg = start_breeze_service()
+            self.send_json({"ok": ok, "message": msg}, 200 if ok else 500)
             return
 
         # 7. 单独下载安装表情包

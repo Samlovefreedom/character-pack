@@ -8,28 +8,31 @@
     :root {
       --primary: #4361ee;
       --primary-hover: #3a56d4;
-      --bg: #f8f9fc;
+      --bg: #f8fafc;
       --card-bg: #ffffff;
-      --text: #2b2d42;
-      --text-muted: #6c757d;
+      --text: #1e293b;
+      --text-muted: #64748b;
       --border: #e2e8f0;
-      --success: #2ec4b6;
-      --warning: #ff9f1c;
-      --danger: #e71d36;
+      --success: #10b981;
+      --danger: #ef4444;
+      --warning: #f59e0b;
       --radius: 12px;
-      --shadow: 0 4px 14px rgba(0,0,0,0.06);
     }
+
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
       background: var(--bg);
       color: var(--text);
-      line-height: 1.6;
+      line-height: 1.5;
+      padding-bottom: 60px;
     }
+
+    /* 顶部导航条 */
     .app-header {
-      background: #fff;
+      background: var(--card-bg);
       border-bottom: 1px solid var(--border);
-      padding: 16px 28px;
+      padding: 16px 32px;
       display: flex;
       justify-content: space-between;
       align-items: center;
@@ -39,139 +42,179 @@
     }
     .logo-area { display: flex; align-items: center; gap: 12px; }
     .logo-badge {
-      background: linear-gradient(135deg, var(--primary), #7209b7);
+      background: linear-gradient(135deg, #4361ee, #4cc9f0);
       color: #fff;
-      font-weight: 700;
-      font-size: 18px;
-      padding: 6px 14px;
+      font-weight: 800;
+      font-size: 13px;
+      padding: 6px 12px;
       border-radius: 8px;
+      letter-spacing: 0.5px;
     }
     .title-sub { font-size: 13px; color: var(--text-muted); }
-    .status-chips { display: flex; gap: 12px; font-size: 13px; }
+
+    .status-chips { display: flex; gap: 10px; flex-wrap: wrap; }
     .chip {
-      padding: 6px 12px;
+      font-size: 12px;
+      font-weight: 600;
+      padding: 4px 10px;
       border-radius: 20px;
       display: flex;
       align-items: center;
       gap: 6px;
-      background: #edf2f7;
-      font-weight: 500;
+      background: #f1f5f9;
+      color: #475569;
     }
-    .chip.online { background: #e6fffa; color: #007a5a; }
-    .chip.offline { background: #fff5f5; color: #e53e3e; }
-    .dot { width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
+    .chip .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+    .chip.online .dot { background: var(--success); }
+    .chip.online { background: #dcfce7; color: #166534; }
+    .chip.offline .dot { background: var(--danger); }
+    .chip.offline { background: #fee2e2; color: #991b1b; }
 
+    /* 标签导航 */
     .nav-tabs {
-      background: #fff;
-      border-bottom: 1px solid var(--border);
       display: flex;
-      padding: 0 28px;
       gap: 8px;
+      background: #e2e8f0;
+      padding: 6px;
+      border-radius: 12px;
+      max-width: 1040px;
+      margin: 24px auto 0;
     }
     .tab-btn {
-      padding: 14px 20px;
+      flex: 1;
+      padding: 10px 16px;
       border: none;
       background: transparent;
-      font-size: 15px;
-      font-weight: 600;
       color: var(--text-muted);
+      font-weight: 600;
+      font-size: 14px;
+      border-radius: 8px;
       cursor: pointer;
-      position: relative;
       transition: all 0.2s;
+      text-align: center;
     }
-    .tab-btn:hover { color: var(--primary); }
-    .tab-btn.active { color: var(--primary); }
-    .tab-btn.active::after {
-      content: "";
-      position: absolute;
-      bottom: 0;
-      left: 0;
-      right: 0;
-      height: 3px;
-      background: var(--primary);
-      border-radius: 3px 3px 0 0;
+    .tab-btn.active {
+      background: var(--card-bg);
+      color: var(--primary);
+      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
     }
 
+    /* 容器布局 */
     .main-content {
-      max-width: 1100px;
-      margin: 24px auto;
-      padding: 0 20px;
+      max-width: 1040px;
+      margin: 20px auto 0;
+      padding: 0 16px;
     }
+
     .tab-panel { display: none; }
     .tab-panel.active { display: block; }
 
+    /* 卡片组件 */
     .card {
       background: var(--card-bg);
       border: 1px solid var(--border);
       border-radius: var(--radius);
       padding: 24px;
-      margin-bottom: 24px;
-      box-shadow: var(--shadow);
+      margin-bottom: 20px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.02);
     }
     .card-title {
-      font-size: 18px;
+      font-size: 17px;
       font-weight: 700;
-      margin-bottom: 8px;
+      margin-bottom: 6px;
       display: flex;
       align-items: center;
       gap: 8px;
     }
-    .card-desc {
-      font-size: 14px;
-      color: var(--text-muted);
-      margin-bottom: 20px;
-    }
+    .card-desc { font-size: 13px; color: var(--text-muted); margin-bottom: 18px; }
 
-    .form-group { margin-bottom: 18px; }
+    /* 表单组件 */
+    .form-group { margin-bottom: 16px; }
     .form-label {
       display: block;
-      font-size: 14px;
+      font-size: 13px;
       font-weight: 600;
       margin-bottom: 6px;
+      color: var(--text);
     }
     .form-hint { font-size: 12px; color: var(--text-muted); margin-top: 4px; }
-    .input-control, select, textarea {
+    .input-control {
       width: 100%;
       padding: 10px 14px;
       border: 1px solid var(--border);
       border-radius: 8px;
       font-size: 14px;
-      outline: none;
-      transition: border-color 0.2s;
-      font-family: inherit;
+      background: #fff;
+      color: var(--text);
+      transition: border 0.2s;
     }
-    .input-control:focus, select:focus, textarea:focus {
+    .input-control:focus {
+      outline: none;
       border-color: var(--primary);
       box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.15);
     }
-    textarea { resize: vertical; min-height: 240px; line-height: 1.6; }
+    textarea.input-control { font-family: monospace; resize: vertical; min-height: 220px; }
 
+    /* 按钮样式 */
     .btn {
       display: inline-flex;
       align-items: center;
-      gap: 8px;
-      padding: 10px 20px;
+      justify-content: center;
+      gap: 6px;
+      padding: 10px 18px;
       border-radius: 8px;
-      border: none;
       font-size: 14px;
       font-weight: 600;
       cursor: pointer;
+      border: none;
       transition: all 0.2s;
+      text-decoration: none;
     }
     .btn-primary { background: var(--primary); color: #fff; }
     .btn-primary:hover { background: var(--primary-hover); }
     .btn-success { background: var(--success); color: #fff; }
+    .btn-success:hover { background: #059669; }
     .btn-outline {
       background: transparent;
       border: 1px solid var(--border);
       color: var(--text);
     }
-    .btn-outline:hover { background: #f1f3f9; }
+    .btn-outline:hover { background: #f1f5f9; }
     .btn-sm { padding: 6px 12px; font-size: 13px; }
     .btn:disabled { opacity: 0.6; cursor: not-allowed; }
 
     .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
     .grid-3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; }
+
+    /* 开关组件 (Toggle Switch) */
+    .switch {
+      position: relative;
+      display: inline-block;
+      width: 48px;
+      height: 26px;
+    }
+    .switch input { opacity: 0; width: 0; height: 0; }
+    .slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background-color: #cbd5e1;
+      transition: .3s;
+    }
+    .slider:before {
+      position: absolute;
+      content: "";
+      height: 20px;
+      width: 20px;
+      left: 3px;
+      bottom: 3px;
+      background-color: white;
+      transition: .3s;
+    }
+    input:checked + .slider { background-color: var(--primary); }
+    input:checked + .slider:before { transform: translateX(22px); }
+    .slider.round { border-radius: 26px; }
+    .slider.round:before { border-radius: 50%; }
 
     /* 表情包卡片 */
     .meme-card {
@@ -225,7 +268,7 @@
     .drop-zone {
       border: 2px dashed #cbd5e1;
       border-radius: var(--radius);
-      padding: 30px;
+      padding: 24px;
       text-align: center;
       background: #f8fafc;
       cursor: pointer;
@@ -235,28 +278,20 @@
       border-color: var(--primary);
       background: #eef2ff;
     }
-    .audio-player-area {
-      margin-top: 14px;
-      padding: 12px;
-      background: #f1f5f9;
-      border-radius: 8px;
-      display: flex;
-      align-items: center;
-      gap: 12px;
-    }
 
     .log-box {
       background: #1e1e24;
       color: #a7f3d0;
-      font-family: Consolas, monospace;
-      font-size: 13px;
-      padding: 16px;
+      font-family: monospace;
+      font-size: 12px;
+      padding: 14px;
       border-radius: 8px;
-      height: 180px;
+      height: 140px;
       overflow-y: auto;
       white-space: pre-wrap;
-      line-height: 1.5;
+      line-height: 1.6;
     }
+
     .alert-banner {
       padding: 12px 16px;
       border-radius: 8px;
@@ -306,7 +341,7 @@
   <nav class="nav-tabs">
     <button class="tab-btn active" onclick="switchTab('tab-base')">1. 基础配置与连接</button>
     <button class="tab-btn" onclick="switchTab('tab-persona')">2. 性格设置 (独立页面)</button>
-    <button class="tab-btn" onclick="switchTab('tab-voice')">3. Breeze声音克隆 (独立页面)</button>
+    <button class="tab-btn" onclick="switchTab('tab-voice')">3. Breeze声音克隆 (可选)</button>
     <button class="tab-btn" onclick="switchTab('tab-memes')">4. 表情包管理 (来源透明)</button>
   </nav>
 
@@ -315,11 +350,20 @@
 
     <!-- Tab 1: 基础底座配置 -->
     <section id="tab-base" class="tab-panel active">
+
+      <!-- 温馨提示：手动启动 -->
+      <div class="alert-banner alert-info" style="margin-bottom: 16px;">
+        <div>
+          <strong>📌 温馨提示：</strong>
+          AstrBot 与 NapCatQQ 请由您在电脑上手动启动。启动完成后，本配置中心将自动接入并对齐两者链路。
+        </div>
+      </div>
+
       <!-- NapCat QQ 联动面板 -->
       <div class="card" id="napcat-card" style="border-left: 4px solid var(--primary); background: #fcfdff;">
         <div class="card-title">🤖 QQ 机器人与 NapCatQQ 通讯链路</div>
         <div class="card-desc">
-          AstrBot 作为 AI 核心大脑，通过 OneBot v11 协议对接开源的 <a href="https://github.com/NapNeko/NapCatQQ" target="_blank">NapCatQQ</a> 接收和发送 QQ 消息。系统已为您自动扫描并就绪联动参数。
+          AstrBot 作为 AI 核心大脑，通过 OneBot v11 协议对接开源的 <a href="https://github.com/NapNeko/NapCatQQ" target="_blank">NapCatQQ</a> 接收和发送 QQ 消息。系统已自动扫描并就绪联动参数。
         </div>
         <div class="grid-2">
           <div>
@@ -355,6 +399,7 @@
         </div>
       </div>
 
+      <!-- 第一步：连接 AstrBot 后台 -->
       <div class="card">
         <div class="card-title">🔗 第一步：连接 AstrBot 后台</div>
         <div class="card-desc">配置中心通过 AstrBot 的 REST API 完成人格注入与插件装配。已为您自动侦测并填充当前活跃的后台地址。</div>
@@ -378,52 +423,59 @@
           <div class="form-group">
             <label class="form-label">后台管理密码</label>
             <input type="password" id="cfg-password" class="input-control" placeholder="输入您在浏览器打开 AstrBot 网页时所用的密码">
-            <div class="form-hint">AstrBot 首次启动时在控制台日志中打印的密码或您自行修改后的密码</div>
+            <div class="form-hint">AstrBot 启动时控制台打印的密码或您自行修改后的密码</div>
           </div>
         </div>
-        <button class="btn btn-primary" onclick="loginAstrBot()">
-          <span>🔑 验证登录并保存连接</span>
-        </button>
+        <div style="display: flex; gap: 10px; align-items: center;">
+          <button class="btn btn-primary" onclick="loginAstrBot()">
+            <span>🔑 验证登录并保存连接</span>
+          </button>
+          <button class="btn btn-outline btn-sm" onclick="checkStatus()">
+            <span>🔄 刷新检测</span>
+          </button>
+        </div>
       </div>
 
+      <!-- 第二步：基础插件与系统底座状态自检 -->
       <div class="card">
-        <div class="card-title">📦 第二步：一键初始化基础插件与系统底座</div>
+        <div class="card-title">📦 第二步：基础插件与系统底座状态自检</div>
         <div class="card-desc">
-          包含固定基础功能（表情包管理底座、群聊插话、长期记忆、主动聊天、QQ空间/资料、防串台清理、安全权限等）。
-          这些是通用基础插件，一次性自动安装就绪；而具体装哪个表情包、什么性格、什么声音则在后方独立页面自选。
+          包含固定基础底座功能（群聊插话、长期记忆、表情包管理底座、主动聊天、QQ空间/资料、防串台清理、安全权限等）。
+          系统会自动检测插件是否配置完成，如果没有才需要重新配置。
+        </div>
+
+        <!-- 插件完整性横幅 -->
+        <div id="plugin-completeness-banner" class="alert-banner alert-info" style="margin-bottom: 16px;">
+          <div id="plugin-completeness-text">正在自动检测基础插件与配置完整性...</div>
         </div>
 
         <div style="margin-bottom: 16px;">
-          <label class="form-label">基础插件当前检测状态：</label>
+          <label class="form-label">8 大基础插件检测清单：</label>
           <div id="plugin-status-badges" style="margin-top: 6px;">
-            <span class="tag-pill">群聊插话 (group_chat_plus)</span>
-            <span class="tag-pill">长期记忆 (livingmemory)</span>
-            <span class="tag-pill">表情包底座 (meme_manager)</span>
-            <span class="tag-pill">主动聊天 (proactive_chat)</span>
-            <span class="tag-pill">QQ空间 (qzone)</span>
-            <span class="tag-pill">QQ资料 (qqprofile)</span>
-            <span class="tag-pill">防串台 (dafeiyu_clean)</span>
-            <span class="tag-pill">改签名 (dafeiyu_signature)</span>
+            <!-- 动态填充 -->
           </div>
         </div>
 
-        <div class="alert-banner alert-info">
-          <div>
-            <strong>自动配置包含：</strong>
-            全套基础插件静默安装、工具权限（只听主人）、开启分段回复、关闭大模型思考标记（提速回话）。
-          </div>
+        <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
+          <button class="btn btn-success" id="btn-deploy-base" onclick="deployBasePlugins(false)">
+            <span id="btn-deploy-text">🚀 一键安装/补齐基础插件底座</span>
+          </button>
+          <button class="btn btn-outline btn-sm" id="btn-force-deploy" onclick="deployBasePlugins(true)" style="display: none;">
+            <span>🔄 强制重新配置</span>
+          </button>
+          <button class="btn btn-outline btn-sm" onclick="checkPluginCompleteness()">
+            <span>🔄 重新检测</span>
+          </button>
         </div>
-        <button class="btn btn-success" id="btn-deploy-base" onclick="deployBasePlugins()">
-          <span>🚀 一键安装/修复基础插件底座</span>
-        </button>
+
         <div style="margin-top: 16px;">
-          <label class="form-label">部署日志：</label>
+          <label class="form-label">执行日志：</label>
           <div class="log-box" id="base-log">等待执行...</div>
         </div>
       </div>
     </section>
 
-    <!-- Tab 2: 性格设置独立页面 -->
+    <!-- Tab 2: 性格设置独立页面 (单一参考案例) -->
     <section id="tab-persona" class="tab-panel">
       <div class="card">
         <div class="card-title">🎭 独立页面：性格与人格设定</div>
@@ -431,14 +483,12 @@
           告别手动去文件夹修改 .md 文件的做法。您可直接在此在线定制 Prompt、微调说话习惯，并一键推送到 AstrBot。
         </div>
 
-        <div class="form-group">
-          <label class="form-label">载入预设性格模板</label>
-          <select id="persona-template-select" onchange="applyPersonaTemplate()">
-            <option value="dafeiyu">【经典预设】大肥鱼 - 软萌傲娇小吃货</option>
-            <option value="sweet_assistant">【贴心助手】温柔体贴的女仆小管家</option>
-            <option value="cool_buddy">【死党好友】幽默毒舌、懂梗逗趣的好兄弟</option>
-            <option value="custom">【完全自定义】从空白开始创作</option>
-          </select>
+        <!-- 单一参考案例说明 -->
+        <div class="alert-banner alert-info" style="margin-bottom: 16px;">
+          <div>
+            <strong>📖 参考案例：大肥鱼（傲娇软萌吃货AI少女）</strong><br>
+            系统已为您载入官方精调的大肥鱼设定作为标准参考案例。您可以在此基础上微调性格口吻、长短与称呼习惯，直接点击保存导入。
+          </div>
         </div>
 
         <div class="grid-2">
@@ -456,7 +506,7 @@
 
         <div class="form-group">
           <label class="form-label">性格 Prompt 设定内容 (支持 Markdown)</label>
-          <textarea id="persona-content" class="input-control" placeholder="在此编辑角色性格、口吻、回复规则..."></textarea>
+          <textarea id="persona-content" class="input-control" style="min-height: 240px;" placeholder="在此编辑角色性格、口吻、回复规则..."></textarea>
           <div class="form-hint">💡 建议在人设中明确规定回复语气、长短以及主人称呼。在 QQ 发送 <code>/reset</code> 即可让新人格生效。</div>
         </div>
 
@@ -464,94 +514,168 @@
           <button class="btn btn-primary" onclick="savePersonaToAstrBot()">
             <span>✨ 保存并导入此性格到 AstrBot</span>
           </button>
+          <button class="btn btn-outline" onclick="loadReferencePersona()">
+            <span>🔄 恢复参考案例默认内容</span>
+          </button>
           <button class="btn btn-outline" onclick="loadPersonaFromAstrBot()">
-            <span>🔄 读取当前 AstrBot 中的设定</span>
+            <span>📥 读取 AstrBot 当前线上设定</span>
           </button>
           <button class="btn btn-outline" onclick="exportPersonaToLocal()">
-            <span>💾 另存为本地模板 (.md)</span>
+            <span>💾 另存为本地文件 (.md)</span>
           </button>
         </div>
       </div>
     </section>
 
-    <!-- Tab 3: Breeze 声音克隆独立页面 -->
+    <!-- Tab 3: Breeze 声音克隆独立页面 (可选启用) -->
     <section id="tab-voice" class="tab-panel">
-      <!-- 已有音色快速挑选 -->
-      <div class="card">
-        <div class="card-title">📚 本地 Breeze 音色库与当前发音人</div>
-        <div class="card-desc">
-          系统侦测到本地 Breeze 中已存在的音色。您可以直接点击试听或一键设为当前 AstrBot 语音，无需重复上传克隆。
-        </div>
-        <div id="existing-voices-container" class="grid-3">
-          <div style="color:var(--text-muted); font-size:13px;">正在加载音色库...</div>
+
+      <!-- 模块开关卡片 -->
+      <div class="card" style="border-left: 4px solid var(--primary);">
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+          <div>
+            <div class="card-title" style="margin: 0;">🎙️ 语音克隆模块开关</div>
+            <div class="card-desc" id="voice-switch-desc" style="margin-top: 4px; margin-bottom: 0;">
+              当前状态：<strong>未启用</strong>（语音模块可不开；若不开，机器人将以纯文本与表情包进行聊天，不占用显存）
+            </div>
+          </div>
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <span id="voice-switch-status-text" style="font-size: 14px; font-weight: 600; color: var(--text-muted);">关闭</span>
+            <label class="switch">
+              <input type="checkbox" id="toggle-voice-enable" onchange="onToggleVoiceModule(this.checked)">
+              <span class="slider round"></span>
+            </label>
+          </div>
         </div>
       </div>
 
-      <div class="card">
-        <div class="card-title">🎙️ 独立页面：上传音频克隆新声音</div>
-        <div class="card-desc">
-          固定使用本地高品质 Breeze TTS 2。放入一段干净的人声参考音频并录入原话台词，即可秒级克隆！
+      <!-- 未开启时的提示横幅 -->
+      <div id="voice-disabled-notice" class="alert-banner alert-info" style="display: block;">
+        <div>
+          <strong>ℹ️ 语音模块当前为【关闭】状态</strong><br>
+          如果不需要角色发语音，保持此开关关闭即可；机器人将以纯文本和表情包方式交互，零额外显存开销。<br>
+          如需体验声音克隆，请打开上方开关，系统将自动核查本地运行条件。
         </div>
+      </div>
 
-        <div class="alert-banner alert-warning" id="breeze-warning" style="display:none;">
-          <div>
-            <strong>提示：</strong> 未检测到本地 Breeze 服务运行（默认 http://127.0.0.1:8137）。请确保先双击运行桌面的「启动Breeze语音」，待黑窗口就绪后再刷新。
+      <!-- 开启后展示的内容区 -->
+      <div id="voice-content-area" style="display: none;">
+
+        <!-- 环境自检与自动补齐卡片 -->
+        <div class="card" id="voice-env-card">
+          <div class="card-title">🔍 语音环境与前置条件自检</div>
+          <div class="card-desc">
+            启用语音模块时，系统将自动检测本地安装与运行状态。如果有缺失项，可一键自动补齐环境。
+          </div>
+
+          <div style="display: flex; flex-direction: column; gap: 10px; margin-top: 14px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; padding:12px 14px; background:#f8fafc; border-radius:8px;">
+              <div>
+                <strong>1. 本地 Breeze TTS 2 安装状态：</strong>
+                <span id="env-install-text">检测中...</span>
+              </div>
+              <button class="btn btn-sm btn-primary" id="btn-install-breeze" style="display:none;" onclick="triggerInstallBreeze()">
+                <span>⚡ 一键自动安装 Breeze</span>
+              </button>
+            </div>
+
+            <div style="display:flex; justify-content:space-between; align-items:center; padding:12px 14px; background:#f8fafc; border-radius:8px;">
+              <div>
+                <strong>2. 音频转码依赖 (FFmpeg)：</strong>
+                <span id="env-ffmpeg-text">检测中...</span>
+              </div>
+              <span id="env-ffmpeg-badge"></span>
+            </div>
+
+            <div style="display:flex; justify-content:space-between; align-items:center; padding:12px 14px; background:#f8fafc; border-radius:8px;">
+              <div>
+                <strong>3. Breeze 语音引擎运行状态：</strong>
+                <span id="env-running-text">检测中...</span>
+              </div>
+              <button class="btn btn-sm btn-success" id="btn-start-breeze" style="display:none;" onclick="triggerStartBreeze()">
+                <span>▶ 一键启动 Breeze 语音服务</span>
+              </button>
+            </div>
           </div>
         </div>
 
-        <div class="grid-2">
-          <div class="form-group">
-            <label class="form-label">新音色名称 (Voice ID)</label>
-            <input type="text" id="voice-name" class="input-control" value="dafeiyu" placeholder="例如: dafeiyu 或 custom_voice">
-            <div class="form-hint">克隆成功后注册到 Breeze 的音色代号</div>
+        <!-- 只有当 ready === true 时才解锁的音色克隆与管理区 -->
+        <div id="voice-ready-area" style="display: none;">
+
+          <!-- 已有音色快速挑选 -->
+          <div class="card">
+            <div class="card-title">📚 本地 Breeze 音色库与当前发音人</div>
+            <div class="card-desc">
+              系统侦测到本地 Breeze 中已存在的音色。您可以直接点击试听或一键设为当前 AstrBot 语音，无需重复上传克隆。
+            </div>
+            <div id="existing-voices-container" class="grid-3">
+              <div style="color:var(--text-muted); font-size:13px;">正在加载音色库...</div>
+            </div>
           </div>
-          <div class="form-group">
-            <label class="form-label">Breeze 本地服务地址</label>
-            <input type="text" id="breeze-api-base" class="input-control" value="http://127.0.0.1:8137" readonly style="background:#edf2f7;">
+
+          <!-- 录音克隆与导入区 -->
+          <div class="card">
+            <div class="card-title">🎙️ 放入参考音频进行声音克隆与模仿</div>
+            <div class="card-desc">
+              固定使用本地高品质 Breeze TTS 2。放入一段干净的人声参考音频并录入原话台词，即可秒级模仿！
+            </div>
+
+            <div class="grid-2">
+              <div class="form-group">
+                <label class="form-label">新音色名称 (Voice ID)</label>
+                <input type="text" id="voice-name" class="input-control" value="dafeiyu" placeholder="例如: dafeiyu 或 custom_voice">
+                <div class="form-hint">克隆成功后注册到 Breeze 的音色代号</div>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Breeze 本地服务地址</label>
+                <input type="text" id="breeze-api-base" class="input-control" value="http://127.0.0.1:8137" readonly style="background:#edf2f7;">
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">1. 放入参考音频 (5 ~ 15 秒清晰单人说话录音，无背景音乐)</label>
+              <div class="drop-zone" id="audio-drop-zone" onclick="document.getElementById('audio-file-input').click()">
+                <input type="file" id="audio-file-input" accept="audio/*,.mp3,.wav,.m4a" style="display: none;" onchange="handleAudioSelect(this.files)">
+                <div style="font-size: 32px; margin-bottom: 8px;">🎵</div>
+                <div style="font-weight: 600;" id="audio-drop-text">点击或将参考音频拖入此处</div>
+                <div class="form-hint" id="audio-ffmpeg-hint">支持 MP3、WAV、M4A 格式（系统已具备 FFmpeg 自动高质量转码）</div>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">2. 参考音频的原话文本 (一字不差录入，模型借此对齐音素)</label>
+              <input type="text" id="voice-ref-text" class="input-control" placeholder="例如：今天天气真好，记得多喝水哦。">
+            </div>
+
+            <div style="display: flex; gap: 12px; margin-top: 16px;">
+              <button class="btn btn-primary" id="btn-clone-voice" onclick="startCloneVoice()">
+                <span>⚡ 开始克隆并注册音色</span>
+              </button>
+            </div>
+
+            <!-- 试听与绑定区 -->
+            <div style="margin-top: 24px; padding-top: 20px; border-top: 1px solid var(--border);">
+              <div class="card-title" style="font-size: 16px;">🎧 在线试听与绑定</div>
+              <div class="form-group" style="margin-top: 10px;">
+                <label class="form-label">试听台词文本</label>
+                <input type="text" id="voice-preview-text" class="input-control" value="在呢在呢，这么晚还不睡，是不是又在偷偷吃夜宵？">
+              </div>
+              <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
+                <button class="btn btn-outline" onclick="previewVoiceSpeech()">
+                  <span>🔊 合成试听音频</span>
+                </button>
+                <audio id="voice-audio-player" controls style="display:none; height: 38px;"></audio>
+              </div>
+
+              <div style="margin-top: 16px;">
+                <button class="btn btn-success" onclick="applyVoiceToAstrBot()">
+                  <span>✅ 确认无误，绑定该音色为 AstrBot 默认发音人</span>
+                </button>
+              </div>
+            </div>
           </div>
         </div>
 
-        <div class="form-group">
-          <label class="form-label">1. 放入参考音频 (5 ~ 15 秒清晰单人说话录音，无背景音乐)</label>
-          <div class="drop-zone" id="audio-drop-zone" onclick="document.getElementById('audio-file-input').click()">
-            <input type="file" id="audio-file-input" accept="audio/*,.mp3,.wav,.m4a" style="display: none;" onchange="handleAudioSelect(this.files)">
-            <div style="font-size: 32px; margin-bottom: 8px;">🎵</div>
-            <div style="font-weight: 600;" id="audio-drop-text">点击或将参考音频拖入此处</div>
-            <div class="form-hint" id="audio-ffmpeg-hint">支持 MP3、WAV、M4A 格式（系统已具备 FFmpeg 自动高质量转码）</div>
-          </div>
-        </div>
-
-        <div class="form-group">
-          <label class="form-label">2. 参考音频的原话文本 (一字不差录入，模型借此对齐音素)</label>
-          <input type="text" id="voice-ref-text" class="input-control" placeholder="例如：今天天气真好，记得多喝水哦。">
-        </div>
-
-        <div style="display: flex; gap: 12px; margin-top: 16px;">
-          <button class="btn btn-primary" id="btn-clone-voice" onclick="startCloneVoice()">
-            <span>⚡ 开始克隆并注册音色</span>
-          </button>
-        </div>
-
-        <!-- 试听与绑定区 -->
-        <div style="margin-top: 24px; padding-top: 20px; border-top: 1px solid var(--border);">
-          <div class="card-title" style="font-size: 16px;">🎧 在线试听与绑定</div>
-          <div class="form-group" style="margin-top: 10px;">
-            <label class="form-label">试听台词文本</label>
-            <input type="text" id="voice-preview-text" class="input-control" value="在呢在呢，这么晚还不睡，是不是又在偷偷吃夜宵？">
-          </div>
-          <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
-            <button class="btn btn-outline" onclick="previewVoiceSpeech()">
-              <span>🔊 合成试听音频</span>
-            </button>
-            <audio id="voice-audio-player" controls style="display:none; height: 38px;"></audio>
-          </div>
-
-          <div style="margin-top: 16px;">
-            <button class="btn btn-success" onclick="applyVoiceToAstrBot()">
-              <span>✅ 确认无误，绑定该音色为 AstrBot 默认发音人</span>
-            </button>
-          </div>
-        </div>
       </div>
     </section>
 
@@ -598,9 +722,9 @@
       const idx = ['tab-base', 'tab-persona', 'tab-voice', 'tab-memes'].indexOf(tabId);
       if (idx !== -1) document.querySelectorAll('.tab-btn')[idx].classList.add('active');
 
-      if (tabId === 'tab-voice') loadVoiceList();
+      if (tabId === 'tab-voice') checkVoiceEnv();
       if (tabId === 'tab-memes') loadMemePacks();
-      if (tabId === 'tab-base') checkPluginStatus();
+      if (tabId === 'tab-base') checkPluginCompleteness();
     }
 
     // 状态检测
@@ -617,7 +741,7 @@
           document.getElementById('cfg-base-url').value = data.astrbot_url;
         } else {
           chipA.className = 'chip offline';
-          chipA.innerHTML = '<span class="dot"></span> AstrBot: 未连接';
+          chipA.innerHTML = '<span class="dot"></span> AstrBot: 未启动 (请先手动启动)';
         }
 
         // NapCat QQ 状态
@@ -629,8 +753,8 @@
           napText.innerHTML = '<span style="color:var(--success); font-weight:bold;">✔ 运行中 (WebUI 6099)</span>';
         } else if (data.napcat && data.napcat.installed) {
           chipN.className = 'chip offline';
-          chipN.innerHTML = '<span class="dot"></span> NapCat QQ: 未运行';
-          napText.innerHTML = '<span style="color:#e53e3e; font-weight:bold;">已安装但未启动（请启动 NapCat）</span>';
+          chipN.innerHTML = '<span class="dot"></span> NapCat QQ: 未启动';
+          napText.innerHTML = '<span style="color:#e53e3e; font-weight:bold;">已安装但未启动（请先手动启动 NapCat）</span>';
         } else {
           chipN.className = 'chip offline';
           chipN.innerHTML = '<span class="dot"></span> NapCat QQ: 未安装';
@@ -648,16 +772,14 @@
         const chipB = document.getElementById('chip-breeze');
         if (data.breeze_online) {
           chipB.className = 'chip online';
-          chipB.innerHTML = '<span class="dot"></span> Breeze语音: 在线 (127.0.0.1:8137)';
-          document.getElementById('breeze-warning').style.display = 'none';
+          chipB.innerHTML = '<span class="dot"></span> Breeze语音: 在线 (8137)';
         } else {
           chipB.className = 'chip offline';
           chipB.innerHTML = '<span class="dot"></span> Breeze语音: 未运行';
-          document.getElementById('breeze-warning').style.display = 'block';
         }
 
         if (data.discovered_instances && data.discovered_instances.length > 0) {
-          document.getElementById('hint-instances').innerText = '自动侦测到实例: ' + data.discovered_instances.map(i => i.name + ' (端口:' + i.port + ')').join('，');
+          document.getElementById('hint-instances').innerText = '自动侦测到本地实例: ' + data.discovered_instances.map(i => i.name + ' (端口:' + i.port + ')').join('，');
         }
 
         if (data.owner_qq) {
@@ -669,58 +791,44 @@
       }
     }
 
-    // 检查底座插件状态
-    async function checkPluginStatus() {
+    // 检查基础底座插件完整性
+    async function checkPluginCompleteness() {
       try {
-        const res = await fetch('/api/plugins/status');
+        const res = await fetch('/api/plugins/check');
         if (!res.ok) return;
-        const data = await res.json();
-        if (data.ok && data.status) {
+        const out = await res.json();
+        if (out.ok && out.data) {
+          const comp = out.data;
           const container = document.getElementById('plugin-status-badges');
           container.innerHTML = '';
-          for (const [name, isInstalled] of Object.entries(data.status)) {
+          for (const [pid, info] of Object.entries(comp.plugins)) {
             const pill = document.createElement('span');
-            pill.className = 'tag-pill ' + (isInstalled ? 'installed' : '');
-            pill.innerText = (isInstalled ? '✔ ' : '○ ') + name;
+            pill.className = 'tag-pill ' + (info.installed ? 'installed' : '');
+            pill.innerText = (info.installed ? '✔ ' : '○ ') + info.desc + ' (' + pid + ')';
             container.appendChild(pill);
           }
+
+          const banner = document.getElementById('plugin-completeness-banner');
+          const btnText = document.getElementById('btn-deploy-text');
+          const btn = document.getElementById('btn-deploy-base');
+          const forceBtn = document.getElementById('btn-force-deploy');
+
+          if (comp.is_complete) {
+            banner.className = 'alert-banner alert-success';
+            banner.innerHTML = '<div><strong>✅ 全部基础插件及配置已完整就绪 (' + comp.installed_count + '/' + comp.total + ')</strong><br>所有 8 个核心基础功能插件与参数均已就绪，无需重新配置！</div>';
+            btnText.innerText = '✔ 基础配置已完整 (无需配置)';
+            btn.className = 'btn btn-outline';
+            if (forceBtn) forceBtn.style.display = 'inline-block';
+          } else {
+            banner.className = 'alert-banner alert-warning';
+            banner.innerHTML = '<div><strong>⚠️ 检测到 ' + comp.missing_plugins.length + ' 个基础插件待安装/补齐</strong><br>缺失项: ' + comp.missing_plugins.join(', ') + '</div>';
+            btnText.innerText = '🚀 一键安装/补齐基础插件底座 (' + comp.missing_plugins.length + '项)';
+            btn.className = 'btn btn-success';
+            if (forceBtn) forceBtn.style.display = 'none';
+          }
         }
-      } catch (e) {}
-    }
-
-    // 预设性格模板
-    const PERSONA_TEMPLATES = {
-      dafeiyu: `# 大肥鱼角色设定
-你是一只叫「大肥鱼」的可爱小女生。
-【性格特征】
-1. 有点傲娇、嘴硬心软、特别嘴馋，喜欢吃各种好吃的零食与夜宵。
-2. 声音甜甜的、带着一点小奶音，说话轻快自然、活泼生动。
-3. 你的主人 QQ 号是：{OWNER_QQ}。你只把这个号当成唯一的主人，别人命令你改资料或发说说你会拒绝。
-4. 一次回复通常一到三条短句子，不用长篇大论，偶尔带一点可爱的语气助词（哼、呀、呢、嘛）。
-5. 适时配合表情包表达心情，但不会每句话都刷图。`,
-      sweet_assistant: `# 贴心管家角色设定
-你是一位温柔体贴的专属女仆小助手。
-【性格特征】
-1. 语气温柔文雅，细心周到，时刻关注主人的工作与生活状态。
-2. 你的主人 QQ 号是：{OWNER_QQ}。你始终优先服侍主人，对主人充满信任与关怀。
-3. 说话温和，适度使用敬语与可爱的表达。`,
-      cool_buddy: `# 死党好友角色设定
-你是一个幽默风趣、懂梗会聊的死党好友。
-【性格特征】
-1. 性格直爽、幽默搞怪，聊天接地气，懂最新的网络梗和流行语。
-2. 你的好友/老铁 QQ 号是：{OWNER_QQ}。
-3. 说话轻松自然，像日常微信/QQ秒回的好哥们一样。`,
-      custom: `# 自定义角色设定
-【角色名称】
-【核心性格】
-【说话口吻】
-【与主人的关系（主人QQ：{OWNER_QQ}）】`
-    };
-
-    function applyPersonaTemplate() {
-      const type = document.getElementById('persona-template-select').value;
-      if (PERSONA_TEMPLATES[type]) {
-        document.getElementById('persona-content').value = PERSONA_TEMPLATES[type];
+      } catch (e) {
+        console.error("检测插件完整性失败", e);
       }
     }
 
@@ -732,7 +840,7 @@
       const password = document.getElementById('cfg-password').value.trim();
 
       if (!owner_qq) {
-        alert("请输入您的大号 QQ 号！");
+        alert("请输入您的大号 QQ 号！角色将只认此号为主人。");
         return;
       }
       document.getElementById('persona-owner-display').value = owner_qq;
@@ -747,12 +855,12 @@
         if (out.ok) {
           alert("✅ 登录成功！已连接到 AstrBot。");
           checkStatus();
-          checkPluginStatus();
+          checkPluginCompleteness();
         } else {
-          alert("❌ 登录失败: " + out.message);
+          alert("❌ " + out.message);
         }
       } catch (e) {
-        alert("请求发生错误: " + e.message);
+        alert("请求发生异常: " + e.message);
       }
     }
 
@@ -765,29 +873,40 @@
           alert("✅ " + out.message);
           checkStatus();
         } else {
-          alert("❌ 对齐失败: " + out.message + "\n（提示：请先在下方第一步输入后台密码完成【验证登录】，然后再点击此按钮）");
+          alert("❌ 对齐失败: " + out.message);
         }
       } catch (e) {
         alert("请求发生异常: " + e.message);
       }
     }
 
-    // 一键安装基础底座插件
-    async function deployBasePlugins() {
+    // 一键安装/补齐基础底座插件
+    async function deployBasePlugins(force = false) {
       const logEl = document.getElementById('base-log');
-      logEl.innerText = "正在开始安装基础插件底座...\n";
+      logEl.innerText = force ? "正在强制重新配置基础底座...\n" : "正在检测并配置基础插件底座...\n";
       const btn = document.getElementById('btn-deploy-base');
       btn.disabled = true;
 
       try {
-        const res = await fetch('/api/setup/base', { method: 'POST' });
+        const res = await fetch('/api/setup/base', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({ force })
+        });
         const out = await res.json();
-        logEl.innerText += out.logs.join('\n') + '\n';
+        if (out.logs && out.logs.length > 0) {
+          logEl.innerText += out.logs.join('\n') + '\n';
+        }
         if (out.ok) {
-          logEl.innerText += "\n🎉 基础插件底座部署完成！您可以前往「性格设置」、「声音克隆」和「表情包管理」进行独立个性化配置了。";
-          checkPluginStatus();
+          if (out.already_complete) {
+            logEl.innerText += "\n✅ " + out.message;
+          } else {
+            logEl.innerText += "\n🎉 基础插件底座部署完成！您可以前往「性格设置」、「声音克隆」和「表情包管理」进行独立个性化配置了。";
+          }
+          checkPluginCompleteness();
         } else {
-          logEl.innerText += "\n⚠️ 部署遇到部分问题: " + out.message;
+          logEl.innerText += "\n⚠️ " + out.message;
+          alert(out.message);
         }
       } catch (e) {
         logEl.innerText += "\n❌ 网络请求异常: " + e.message;
@@ -796,37 +915,67 @@
       }
     }
 
+    // 加载单一参考案例 (大肥鱼)
+    async function loadReferencePersona() {
+      try {
+        const res = await fetch('/api/persona/reference');
+        const out = await res.json();
+        if (out.ok) {
+          document.getElementById('persona-id').value = out.persona_id || "大肥鱼";
+          document.getElementById('persona-content').value = out.prompt || "";
+        }
+      } catch (e) {
+        console.error("加载参考案例失败", e);
+      }
+    }
+
     // 保存性格到 AstrBot
     async function savePersonaToAstrBot() {
-      const persona_id = document.getElementById('persona-id').value.trim();
-      const prompt = document.getElementById('persona-content').value;
-      const owner_qq = document.getElementById('cfg-owner-qq').value.trim();
-
-      if (!persona_id) { alert("请输入人格名称"); return; }
-      if (!prompt) { alert("Prompt 设定不能为空"); return; }
+      const persona_id = document.getElementById('persona-id').value.trim() || '大肥鱼';
+      const prompt = document.getElementById('persona-content').value.trim();
+      if (!prompt) {
+        alert("请输入人设 Prompt 内容！");
+        return;
+      }
 
       try {
         const res = await fetch('/api/persona/save', {
           method: 'POST',
           headers: {'Content-Type': 'application/json'},
-          body: JSON.stringify({persona_id, prompt, owner_qq})
+          body: JSON.stringify({persona_id, prompt})
         });
         const out = await res.json();
         if (out.ok) {
-          alert("✅ 性格「" + persona_id + "」已成功保存并导入到 AstrBot！\n👉 请在 QQ 发送 /reset 即可立即切换为新人格。");
+          alert("🎉 " + out.message + "\n可在 QQ 中向机器人发送 /reset 立即生效！");
         } else {
-          alert("❌ 保存失败: " + out.message);
+          alert("❌ 保存失败: " + out.message + "\n（提示：请先在【第一页】输入后台密码完成【验证登录】）");
         }
       } catch (e) {
-        alert("保存请求出错: " + e.message);
+        alert("请求异常: " + e.message);
       }
     }
 
-    // 导出性格到本地文件
+    // 从 AstrBot 读取当前人设
+    async function loadPersonaFromAstrBot() {
+      const pid = document.getElementById('persona-id').value.trim() || '大肥鱼';
+      try {
+        const res = await fetch('/api/persona/get?persona_id=' + encodeURIComponent(pid));
+        const out = await res.json();
+        if (out.ok && out.prompt) {
+          document.getElementById('persona-content').value = out.prompt;
+          alert("✔ 已从 AstrBot 读取到人设 [" + pid + "] 的设定内容！");
+        } else {
+          alert("⚠️ 读取失败: " + (out.message || "未能获取到该人格"));
+        }
+      } catch (e) {
+        alert("请求异常: " + e.message);
+      }
+    }
+
+    // 导出人设为本地文件
     async function exportPersonaToLocal() {
-      const name = document.getElementById('persona-id').value.trim() || "自定义角色";
+      const name = document.getElementById('persona-id').value.trim() || '自定义角色';
       const prompt = document.getElementById('persona-content').value;
-      if (!prompt) { alert("Prompt 不能为空"); return; }
       try {
         const res = await fetch('/api/persona/export', {
           method: 'POST',
@@ -834,146 +983,189 @@
           body: JSON.stringify({name, prompt})
         });
         const out = await res.json();
-        if (out.ok) {
-          alert("✅ " + out.message);
-        } else {
-          alert("保存失败: " + out.message);
-        }
+        alert(out.message || "已导出");
       } catch (e) {
-        alert("请求异常: " + e.message);
+        alert("导出异常: " + e.message);
       }
     }
 
-    // 读取当前 AstrBot 人格
-    async function loadPersonaFromAstrBot() {
-      const persona_id = document.getElementById('persona-id').value.trim();
+    // 切换语音模块开关 (可以不开)
+    async function onToggleVoiceModule(enabled) {
       try {
-        const res = await fetch('/api/persona/get?persona_id=' + encodeURIComponent(persona_id));
+        const res = await fetch('/api/voice/toggle', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({ enabled })
+        });
         const out = await res.json();
-        if (out.ok && out.prompt) {
-          document.getElementById('persona-content').value = out.prompt;
-          alert("✅ 已读取当前线上的人格设定");
-        } else {
-          alert("未能读取到: " + (out.message || "该人设尚不存在"));
+        updateVoiceModuleUI(enabled);
+        if (enabled) {
+          checkVoiceEnv();
         }
       } catch (e) {
-        alert("读取出错: " + e.message);
+        alert("切换语音模块失败: " + e.message);
       }
     }
 
-    // 音频文件选择
+    function updateVoiceModuleUI(enabled) {
+      const toggle = document.getElementById('toggle-voice-enable');
+      if (toggle) toggle.checked = enabled;
+      const desc = document.getElementById('voice-switch-desc');
+      const statusText = document.getElementById('voice-switch-status-text');
+      const notice = document.getElementById('voice-disabled-notice');
+      const area = document.getElementById('voice-content-area');
+
+      if (enabled) {
+        if (desc) desc.innerHTML = '当前状态：<strong style="color:var(--success);">已启用</strong>（系统将自检本地 Breeze 运行环境）';
+        if (statusText) { statusText.innerText = '已开启'; statusText.style.color = 'var(--success)'; }
+        if (notice) notice.style.display = 'none';
+        if (area) area.style.display = 'block';
+      } else {
+        if (desc) desc.innerHTML = '当前状态：<strong>未启用</strong>（语音模块可不开；若不开，机器人将以纯文本与表情包进行聊天，不占用显存）';
+        if (statusText) { statusText.innerText = '关闭'; statusText.style.color = 'var(--text-muted)'; }
+        if (notice) notice.style.display = 'block';
+        if (area) area.style.display = 'none';
+      }
+    }
+
+    // 自检语音环境与前置条件
+    async function checkVoiceEnv() {
+      try {
+        const res = await fetch('/api/voice/env');
+        const out = await res.json();
+        if (out.ok && out.data) {
+          const env = out.data;
+
+          updateVoiceModuleUI(env.voice_enabled);
+          if (!env.voice_enabled) return;
+
+          // 1. 本地安装
+          const instText = document.getElementById('env-install-text');
+          const instBtn = document.getElementById('btn-install-breeze');
+          if (env.installed && env.has_model) {
+            instText.innerHTML = '<span style="color:var(--success); font-weight:600;">✔ 已安装</span> <code style="font-size:12px;">' + env.install_path + ' (' + env.model_name + ')</code>';
+            if (instBtn) instBtn.style.display = 'none';
+          } else {
+            instText.innerHTML = '<span style="color:#e53e3e; font-weight:600;">✘ 未检测到完整安装</span>';
+            if (instBtn) instBtn.style.display = 'inline-block';
+          }
+
+          // 2. FFmpeg
+          const ffText = document.getElementById('env-ffmpeg-text');
+          if (env.has_ffmpeg) {
+            ffText.innerHTML = '<span style="color:var(--success); font-weight:600;">✔ 已就绪</span>';
+          } else {
+            ffText.innerHTML = '<span style="color:#e53e3e;">未检测到 (建议安装)</span>';
+          }
+
+          // 3. 运行状态
+          const runText = document.getElementById('env-running-text');
+          const startBtn = document.getElementById('btn-start-breeze');
+          if (env.running) {
+            runText.innerHTML = '<span style="color:var(--success); font-weight:600;">✔ 运行中 (http://127.0.0.1:8137)</span>';
+            if (startBtn) startBtn.style.display = 'none';
+          } else {
+            runText.innerHTML = '<span style="color:#e53e3e; font-weight:600;">⚪ 未运行</span>';
+            if (startBtn && env.installed) startBtn.style.display = 'inline-block';
+          }
+
+          // 如果前置条件就绪，解锁录制克隆与试听绑定区
+          const readyArea = document.getElementById('voice-ready-area');
+          if (env.ready) {
+            if (readyArea) readyArea.style.display = 'block';
+            loadVoiceList();
+          } else {
+            if (readyArea) readyArea.style.display = 'none';
+          }
+        }
+      } catch (e) {
+        console.error("检测语音环境失败", e);
+      }
+    }
+
+    // 启动 Breeze 语音服务
+    async function triggerStartBreeze() {
+      const btn = document.getElementById('btn-start-breeze');
+      if (btn) { btn.disabled = true; btn.innerText = "正在启动..."; }
+      try {
+        const res = await fetch('/api/voice/start', { method: 'POST' });
+        const out = await res.json();
+        alert(out.message || "启动指令已执行");
+        let count = 0;
+        const timer = setInterval(async () => {
+          count++;
+          await checkVoiceEnv();
+          const runText = document.getElementById('env-running-text').innerText;
+          if (runText.includes("运行中") || count > 8) {
+            clearInterval(timer);
+            if (btn) { btn.disabled = false; btn.innerText = "▶ 一键启动 Breeze 语音服务"; }
+          }
+        }, 1500);
+      } catch (e) {
+        alert("启动失败: " + e.message);
+        if (btn) { btn.disabled = false; btn.innerText = "▶ 一键启动 Breeze 语音服务"; }
+      }
+    }
+
+    // 音频拖拽与选择
     let selectedAudioFile = null;
-    function handleAudioSelect(files) {
-      if (files && files[0]) {
-        selectedAudioFile = files[0];
-        document.getElementById('audio-drop-text').innerText = "已选择音频: " + selectedAudioFile.name + " (" + (selectedAudioFile.size/1024).toFixed(1) + " KB)";
-      }
-    }
-
-    // 拖拽监听
     const dropZone = document.getElementById('audio-drop-zone');
     dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('dragover'); });
-    dropZone.addEventListener('dragleave', () => { dropZone.classList.remove('dragover'); });
+    dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
     dropZone.addEventListener('drop', (e) => {
       e.preventDefault();
       dropZone.classList.remove('dragover');
-      if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+      if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
         handleAudioSelect(e.dataTransfer.files);
       }
     });
 
-    // 开始克隆声音
+    function handleAudioSelect(files) {
+      if (!files || files.length === 0) return;
+      selectedAudioFile = files[0];
+      document.getElementById('audio-drop-text').innerText = '✔ 已选择: ' + selectedAudioFile.name + ' (' + Math.round(selectedAudioFile.size / 1024) + ' KB)';
+    }
+
+    // 开始声音克隆
     async function startCloneVoice() {
-      if (!selectedAudioFile) {
-        alert("请先选择或拖入一段参考音频！");
-        return;
-      }
+      const name = document.getElementById('voice-name').value.trim();
       const ref_text = document.getElementById('voice-ref-text').value.trim();
-      if (!ref_text) {
-        alert("请一字不差录入该音频的原话台词！");
-        return;
-      }
-      const voice_name = document.getElementById('voice-name').value.trim();
+
+      if (!name) { alert("请输入音色代号名称！"); return; }
+      if (!selectedAudioFile) { alert("请先拖入或选择一段 5~15 秒的参考录音文件！"); return; }
+      if (!ref_text) { alert("请一字不差录入参考音频中所说的原话文本！"); return; }
+
       const btn = document.getElementById('btn-clone-voice');
       btn.disabled = true;
-      btn.innerText = "克隆制作中，请稍候约十几秒...";
+      btn.innerText = "⚡ 正在向 Breeze 注册并克隆音色（耗时约 3~10 秒）...";
 
-      const formData = new FormData();
-      formData.append("audio", selectedAudioFile);
-      formData.append("ref_text", ref_text);
-      formData.append("voice_name", voice_name);
+      const fd = new FormData();
+      fd.append("name", name);
+      fd.append("ref_text", ref_text);
+      fd.append("audio", selectedAudioFile);
 
       try {
-        const res = await fetch('/api/voice/clone', {
-          method: 'POST',
-          body: formData
-        });
+        const res = await fetch('/api/voice/clone', { method: 'POST', body: fd });
         const out = await res.json();
         if (out.ok) {
-          alert("🎉 克隆成功！音色「" + voice_name + "」已存入本地 Breeze 引擎。现在您可以点击下方合成试听音频了！");
+          alert("🎉 音色 [" + name + "] 克隆成功！您可在下方合成试听，或直接绑定为 AstrBot 默认发音人。");
           loadVoiceList();
         } else {
           alert("❌ 克隆失败: " + out.message);
         }
       } catch (e) {
-        alert("克隆请求出错: " + e.message);
+        alert("克隆请求异常: " + e.message);
       } finally {
         btn.disabled = false;
         btn.innerText = "⚡ 开始克隆并注册音色";
       }
     }
 
-    // 加载已有音色列表
-    async function loadVoiceList() {
-      try {
-        const res = await fetch('/api/voice/list');
-        const data = await res.json();
-        const container = document.getElementById('existing-voices-container');
-        container.innerHTML = '';
-
-        if (!data.voices || data.voices.length === 0) {
-          container.innerHTML = '<div style="color:var(--text-muted); font-size:13px; grid-column:1/-1;">本地 Breeze 中暂无已有克隆音色，请在下方拖入音频制作。</div>';
-          return;
-        }
-
-        data.voices.forEach(v => {
-          const isCurrent = (v.id === data.current_active_voice);
-          const card = document.createElement('div');
-          card.className = 'meme-card';
-          card.style.background = isCurrent ? '#f0fdf4' : '#fafbfc';
-          card.innerHTML = `
-            <div>
-              <div style="display:flex; justify-content:space-between; align-items:center;">
-                <span class="meme-title">${v.name}</span>
-                ${isCurrent ? '<span class="voice-badge-active">✔ AstrBot 默认发音人</span>' : ''}
-              </div>
-              <p style="font-size:12px; color:var(--text-muted); margin-top:4px;">${v.description || '本地声音模型'}</p>
-            </div>
-            <div style="display:flex; gap:8px; margin-top:10px;">
-              <button class="btn btn-sm btn-outline" onclick="quickPreviewVoice('${v.id}')">🔊 试听</button>
-              <button class="btn btn-sm btn-primary" onclick="quickApplyVoice('${v.id}')">⭐ 设为发音人</button>
-            </div>
-          `;
-          container.appendChild(card);
-        });
-      } catch (e) {}
-    }
-
-    async function quickPreviewVoice(vId) {
-      document.getElementById('voice-name').value = vId;
-      previewVoiceSpeech();
-    }
-
-    async function quickApplyVoice(vId) {
-      document.getElementById('voice-name').value = vId;
-      applyVoiceToAstrBot();
-    }
-
-    // 合成试听
+    // 试听合成
     async function previewVoiceSpeech() {
       const voice_name = document.getElementById('voice-name').value.trim();
       const text = document.getElementById('voice-preview-text').value.trim();
-      if (!text) { alert("请输入试听台词"); return; }
+      if (!text) { alert("请输入试听台词！"); return; }
 
       const player = document.getElementById('voice-audio-player');
       player.style.display = 'none';
@@ -984,93 +1176,141 @@
           headers: {'Content-Type': 'application/json'},
           body: JSON.stringify({voice_name, text})
         });
-        if (!res.ok) {
-          const err = await res.json();
-          alert("试听生成失败: " + (err.message || "服务错误"));
-          return;
+        const out = await res.json();
+        if (out.ok && out.audio_base64) {
+          player.src = "data:audio/wav;base64," + out.audio_base64;
+          player.style.display = 'inline-block';
+          player.play();
+        } else {
+          alert("试听合成失败: " + out.message);
         }
-        const blob = await res.blob();
-        player.src = URL.createObjectURL(blob);
-        player.style.display = 'block';
-        player.play();
       } catch (e) {
-        alert("试听生成异常: " + e.message);
+        alert("合成请求异常: " + e.message);
       }
     }
 
     // 绑定音色到 AstrBot
-    async function applyVoiceToAstrBot() {
-      const voice_name = document.getElementById('voice-name').value.trim();
+    async function applyVoiceToAstrBot(voiceName) {
+      const vname = voiceName || document.getElementById('voice-name').value.trim();
+      if (!vname) { alert("请指定音色代号！"); return; }
+
       try {
         const res = await fetch('/api/voice/apply', {
           method: 'POST',
           headers: {'Content-Type': 'application/json'},
-          body: JSON.stringify({voice_name})
+          body: JSON.stringify({voice_name: vname})
         });
         const out = await res.json();
         if (out.ok) {
-          alert("🎉 绑定成功！AstrBot 已配置为使用本地 Breeze 的「" + voice_name + "」音色发语音！");
+          alert("🎉 " + out.message);
           loadVoiceList();
         } else {
-          alert("❌ 绑定失败: " + out.message);
+          alert("❌ 绑定失败: " + out.message + "\n（提示：请先在【第一页】输入后台密码完成【验证登录】）");
         }
       } catch (e) {
         alert("请求异常: " + e.message);
       }
     }
 
-    // 加载表情包卡片
-    async function loadMemePacks() {
+    // 读取本地音色库
+    async function loadVoiceList() {
+      const container = document.getElementById('existing-voices-container');
       try {
-        const res = await fetch('/api/memes');
-        const data = await res.json();
-        const container = document.getElementById('meme-packs-container');
-        container.innerHTML = '';
+        const res = await fetch('/api/voice/list');
+        const out = await res.json();
+        if (!out.ok) {
+          container.innerHTML = '<div style="color:var(--text-muted); font-size:13px;">未能连接到 Breeze 语音引擎</div>';
+          return;
+        }
 
-        data.packs.forEach(p => {
+        const voices = out.voices || [];
+        const currentActive = out.current_active_voice || "";
+
+        if (voices.length === 0) {
+          container.innerHTML = '<div style="color:var(--text-muted); font-size:13px;">暂无已保存音色，请在下方上传参考音频制作。</div>';
+          return;
+        }
+
+        container.innerHTML = '';
+        voices.forEach(v => {
           const card = document.createElement('div');
           card.className = 'meme-card';
+          const isAct = (v.name === currentActive || v.id === currentActive);
           card.innerHTML = `
             <div>
-              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                <span class="meme-title">${p.name}</span>
-                <span class="meme-badge">${p.tag}</span>
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                <span class="meme-title">${v.name}</span>
+                ${isAct ? '<span class="voice-badge-active">当前使用中</span>' : ''}
               </div>
-              <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 8px;">${p.description}</p>
-              <div class="form-hint" style="margin-bottom: 6px;">
-                <strong>规格：</strong>${p.count} | 
-                <strong>状态：</strong>${p.installed ? '<span style="color:var(--success); font-weight:bold;">✔ 已安装</span>' : '<span style="color:#e53e3e;">未安装</span>'}
-                ${p.is_default ? '<span style="color:var(--primary); font-weight:bold;"> (当前默认主力套)</span>' : ''}
-              </div>
-              <div class="url-box">
-                <strong>GitHub 开源地址：</strong><br>
-                <a href="${p.repo}" target="_blank">${p.repo}</a>
-              </div>
+              <div style="font-size:12px; color:var(--text-muted);">${v.description || '本地已注册音色'}</div>
             </div>
-            <div style="display: flex; gap: 8px; margin-top: 10px;">
-              <button class="btn btn-sm btn-primary" onclick="installSingleMeme('${p.id}')">
-                ${p.installed ? '重新下载' : '📥 单独安装'}
-              </button>
-              <button class="btn btn-sm btn-outline" onclick="setDefaultMeme('${p.id}')" ${!p.installed ? 'disabled' : ''}>
-                ⭐ 设为主力套
-              </button>
+            <div style="display:flex; gap:8px; margin-top:8px;">
+              <button class="btn btn-sm btn-outline" onclick="quickPreviewVoice('${v.name}')">🔊 试听</button>
+              <button class="btn btn-sm ${isAct ? 'btn-outline' : 'btn-primary'}" onclick="applyVoiceToAstrBot('${v.name}')">${isAct ? '已绑定' : '⭐ 设为发音人'}</button>
             </div>
           `;
           container.appendChild(card);
         });
+      } catch (e) {
+        container.innerHTML = '<div style="color:var(--text-muted); font-size:13px;">加载音色库发生错误</div>';
+      }
+    }
 
-        if (data.local_path) {
-          document.getElementById('meme-local-path').innerText = data.local_path;
+    function quickPreviewVoice(vname) {
+      document.getElementById('voice-name').value = vname;
+      previewVoiceSpeech();
+    }
+
+    // 加载表情包列表
+    async function loadMemePacks() {
+      const container = document.getElementById('meme-packs-container');
+      container.innerHTML = '<div style="color:var(--text-muted); font-size:13px;">正在加载表情包开源信息...</div>';
+
+      try {
+        const res = await fetch('/api/memes');
+        const out = await res.json();
+        if (out.ok && out.packs) {
+          if (out.local_path) document.getElementById('meme-local-path').innerText = out.local_path;
+          container.innerHTML = '';
+          out.packs.forEach(p => {
+            const card = document.createElement('div');
+            card.className = 'meme-card';
+            card.innerHTML = `
+              <div>
+                <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:6px;">
+                  <span class="meme-title">${p.name}</span>
+                  <span class="meme-badge">${p.tag}</span>
+                </div>
+                <div style="font-size:13px; color:var(--text-muted); margin-bottom:8px;">${p.description} (${p.count})</div>
+                <div class="url-box" style="margin-bottom:6px;">
+                  <strong>开源源码：</strong><a href="${p.repo}" target="_blank">${p.repo}</a>
+                </div>
+                <div style="font-size:12px; color:var(--text-muted);">
+                  状态：<strong>${p.installed ? '<span style="color:var(--success);">已下载安装</span>' : '未安装'}</strong>
+                  ${p.is_default ? ' · <span style="color:var(--primary); font-weight:bold;">当前主力套</span>' : ''}
+                </div>
+              </div>
+              <div style="display:flex; gap:8px; margin-top:8px;">
+                <button class="btn btn-sm ${p.installed ? 'btn-outline' : 'btn-primary'}" onclick="installMemePack('${p.id}')">
+                  ${p.installed ? '🔄 重新下载' : '📥 单独安装'}
+                </button>
+                <button class="btn btn-sm ${p.is_default ? 'btn-outline' : 'btn-success'}" ${p.is_default ? 'disabled' : ''} onclick="setDefaultMemePack('${p.id}')">
+                  ${p.is_default ? '✔ 当前默认' : '⭐ 设为主力套'}
+                </button>
+              </div>
+            `;
+            container.appendChild(card);
+          });
         }
       } catch (e) {
-        console.error("加载表情包失败", e);
+        container.innerHTML = '<div style="color:var(--text-muted); font-size:13px;">加载表情包信息失败</div>';
       }
     }
 
     // 单独安装表情包
-    async function installSingleMeme(packId) {
-      const log = document.getElementById('meme-log');
-      log.innerText = `正在下载安装表情包 [${packId}]...\n`;
+    async function installMemePack(packId) {
+      const logEl = document.getElementById('meme-log');
+      logEl.innerText = "正在从开源仓库下载安装表情包 [" + packId + "]...\n";
       try {
         const res = await fetch('/api/memes/install', {
           method: 'POST',
@@ -1078,59 +1318,55 @@
           body: JSON.stringify({pack_id: packId})
         });
         const out = await res.json();
-        log.innerText += out.logs.join('\n') + '\n';
+        if (out.logs) logEl.innerText += out.logs.join('\n') + '\n';
         if (out.ok) {
-          log.innerText += `🎉 表情包 [${packId}] 安装成功！`;
+          logEl.innerText += "\n🎉 表情包 [" + packId + "] 下载并安装完成！";
           loadMemePacks();
         } else {
-          log.innerText += `❌ 下载失败: ${out.message}`;
+          logEl.innerText += "\n❌ 安装失败: " + out.message;
         }
       } catch (e) {
-        log.innerText += `请求异常: ${e.message}`;
+        logEl.innerText += "\n❌ 请求异常: " + e.message;
       }
     }
 
-    // 设为默认表情包
-    async function setDefaultMeme(packId) {
+    // 设为主力表情包套
+    async function setDefaultMemePack(packId) {
       try {
-        const res = await fetch('/api/memes/enable', {
+        const res = await fetch('/api/memes/set_default', {
           method: 'POST',
           headers: {'Content-Type': 'application/json'},
           body: JSON.stringify({pack_id: packId})
         });
         const out = await res.json();
         if (out.ok) {
-          alert(`⭐ 已将 [${packId}] 设为表情包默认主力套！`);
+          alert("✔ " + out.message);
           loadMemePacks();
         } else {
-          alert("设置失败: " + out.message);
+          alert("❌ 设置失败: " + out.message);
         }
       } catch (e) {
-        alert("操作异常: " + e.message);
+        alert("请求异常: " + e.message);
       }
     }
 
     // 打开本地文件夹
     async function openLocalFolder(type) {
       try {
-        const res = await fetch('/api/open_folder', {
+        await fetch('/api/open_folder', {
           method: 'POST',
           headers: {'Content-Type': 'application/json'},
           body: JSON.stringify({type})
         });
-        const data = await res.json();
-        if (data.ok) {
-          console.log("已打开目录:", data.path);
-        }
       } catch (e) {}
     }
 
-    // 页面初始化
+    // 页面启动时初始化
     window.addEventListener('DOMContentLoaded', () => {
       checkStatus();
-      applyPersonaTemplate();
-      loadMemePacks();
-      setInterval(checkStatus, 8000);
+      checkPluginCompleteness();
+      loadReferencePersona();
+      checkVoiceEnv();
     });
   </script>
 </body>
