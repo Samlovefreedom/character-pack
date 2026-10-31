@@ -942,6 +942,15 @@ def optimize_and_convert_image(raw_bytes, orig_filename, max_dim=800):
         raise ValueError(f"无法识别或转换图片格式: {orig_filename}")
 
 
+def sanitize_pack_id(pack_id_str):
+    """确保表情包 ID 严格符合 AstrBot 协议规范：2~64字符，仅允许小写英文、数字、点、下划线及横杠"""
+    raw = (pack_id_str or "").strip().lower()
+    clean = re.sub(r"[^a-z0-9._\-]", "", raw).strip("._-")
+    if len(clean) < 2 or clean.endswith("."):
+        clean = f"pack_{uuid.uuid4().hex[:8]}"
+    return clean[:64]
+
+
 def sanitize_category_name(category_name):
     """规范化分类名称，支持中文、英文字母、数字、下划线及横杠，滤除路径特殊符号"""
     cat = (category_name or "").strip()
@@ -1067,7 +1076,7 @@ def import_and_optimize_meme_pack(pack_id, pack_name, files_map=None, zip_bytes=
     5. 自动生成与更新标准 manifest.json 及 memes_data.json
     6. 自动同步到 AstrBot 的 plugin_data/meme_manager/packs/<pack_id>/ 并注册启用
     """
-    safe_id = re.sub(r"[^\w\-_]", "", pack_id.strip()) or f"pack_{uuid.uuid4().hex[:8]}"
+    safe_id = sanitize_pack_id(pack_id)
     clean_name = pack_name.strip() or safe_id
     clean_cat = sanitize_category_name(category or "happy")
     cat_desc = (category_desc or "").strip() or DEFAULT_MEME_CATEGORIES.get(clean_cat, f"在表达{clean_cat}情绪或语境时发送")
