@@ -49,6 +49,13 @@ from web_adapter import (
     find_ffmpeg_path,
     AstrBotClient,
     BreezeClient,
+    get_active_persona_info,
+    get_active_voice_info,
+    get_meme_manager_data_dir,
+    list_local_meme_packs,
+    import_and_optimize_meme_pack,
+    sync_all_local_memes_to_astrbot,
+    delete_local_meme_pack,
 )
 
 PORT = 18989
@@ -114,6 +121,7 @@ def parse_multipart(rfile, headers):
     parts = raw_data.split(boundary_marker)
     fields = {}
     files = {}
+    all_files = []
     
     for part in parts:
         if not part or part.strip() in (b"", b"--"):
@@ -128,14 +136,17 @@ def parse_multipart(rfile, headers):
         field_name = name_match.group(1)
         filename_match = re.search(r'filename="([^"]+)"', header_text)
         if filename_match:
-            files[field_name] = {
+            item = {
+                "field": field_name,
                 "filename": filename_match.group(1),
                 "data": body
             }
+            files[field_name] = item
+            all_files.append(item)
         else:
             fields[field_name] = body.decode("utf-8", "replace")
             
-    return fields, files
+    return fields, files, all_files
 
 
 class ConfigRequestHandler(BaseHTTPRequestHandler):
@@ -178,15 +189,25 @@ class ConfigRequestHandler(BaseHTTPRequestHandler):
             a_ok = test_astrbot_url(STATE["astrbot_url"])
             b_ok = test_breeze_url()
             napcat_info = detect_napcat()
+            p_info = get_active_persona_info()
+            v_info = get_active_voice_info()
             self.send_json({
                 "astrbot_url": STATE["astrbot_url"],
                 "astrbot_online": a_ok,
                 "breeze_online": b_ok,
                 "napcat": napcat_info,
-                "owner_qq": STATE["owner_qq"],
+                "owner_qq": p_info.get("owner_qq") or STATE.get("owner_qq", ""),
+                "active_persona": p_info.get("persona_id", "大肥鱼"),
+                "active_voice": v_info.get("voice_name", "dafeiyu"),
+                "voice_enabled": STATE.get("voice_enabled", False) or v_info.get("enabled", False),
                 "discovered_instances": instances,
                 "has_token": bool(STATE["astrbot_client"] and STATE["astrbot_client"].token)
             })
+            return
+
+        if path == "/api/persona/current":
+            p_info = get_active_persona_info()
+            self.send_json({"ok": True, "data": p_info})
             return
 
         if path == "/api/persona/get":
@@ -204,14 +225,45 @@ class ConfigRequestHandler(BaseHTTPRequestHandler):
                 self.send_json({"ok": False, "message": r.get("message") or "获取失败"})
             return
 
+        if path == "/api/memes/local":
+            packs = list_local_meme_packs()
+            self.send_json({"ok": True, "packs": packs})
+            return
+
+        if path == "/api/memes/image":
+            qs = urllib.parse.parse_qs(parsed.query)
+            pack_id = qs.get("pack_id", [""])[0]
+            img_rel = qs.get("img", [""])[0].replace("\\", "/")
+            if not pack_id or not img_rel or ".." in pack_id or ".." in img_rel:
+                self.send_json({"ok": False, "message": "非法路径"}, 400)
+                return
+            full_img_path = os.path.join(PACK_ROOT, "memes", pack_id, img_rel)
+            if not os.path.exists(full_img_path):
+                self.send_json({"ok": False, "message": "图片不存在"}, 404)
+                return
+            ext = os.path.splitext(full_img_path)[1].lower()
+            mime = "image/png"
+            if ext in (".jpg", ".jpeg"): mime = "image/jpeg"
+            elif ext == ".gif": mime = "image/gif"
+            elif ext == ".webp": mime = "image/webp"
+            try:
+                with open(full_img_path, "rb") as f:
+                    content = f.read()
+                self.send_response(200)
+                self.send_header("Content-Type", mime)
+                self.send_header("Content-Length", str(len(content)))
+                self.send_header("Cache-Control", "public, max-age=86400")
+                self.end_headers()
+                self.wfile.write(content)
+            except Exception as e:
+                self.send_json({"ok": False, "message": str(e)}, 500)
+            return
+
         if path == "/api/memes":
             client = STATE["astrbot_client"]
             installed_ids = set()
-            instances = detect_astrbot_instances()
-            if instances and instances[0].get("dir"):
-                local_path = os.path.join(instances[0]["dir"], "data", "plugins", "astrbot_plugin_meme_manager", "packs")
-            else:
-                local_path = "AstrBot实例目录/data/plugins/astrbot_plugin_meme_manager/packs/"
+            data_dir = get_meme_manager_data_dir()
+            local_path = os.path.join(data_dir, "packs") if data_dir else os.path.join(PACK_ROOT, "memes")
 
             if client and client.token:
                 ext = "/plugins/extensions/meme_manager"
@@ -259,7 +311,8 @@ class ConfigRequestHandler(BaseHTTPRequestHandler):
                             "saved": v.get("saved", True)
                         })
 
-            current_tts_voice = ""
+            v_info = get_active_voice_info()
+            current_tts_voice = v_info.get("voice_name") or "dafeiyu"
             client = STATE["astrbot_client"]
             if client and client.token:
                 cfg = client.get_default_config()
@@ -270,14 +323,32 @@ class ConfigRequestHandler(BaseHTTPRequestHandler):
                         p_conf = client.call("GET", f"/providers/{urllib.parse.quote(current_pid, safe='')}")
                         if client.is_ok(p_conf):
                             data = (p_conf.get("data") or {}).get("provider", p_conf.get("data", {}))
-                            current_tts_voice = data.get("openai-tts-voice", "")
+                            current_tts_voice = data.get("openai-tts-voice", current_tts_voice)
 
             self.send_json({
                 "ok": True,
                 "voices": voices_list,
                 "current_active_voice": current_tts_voice,
+                "voice_enabled": STATE.get("voice_enabled", False) or v_info.get("enabled", False),
                 "ffmpeg_available": bool(find_ffmpeg_path())
             })
+            return
+
+        if path == "/api/voice/speak_audio":
+            qs = urllib.parse.parse_qs(parsed.query)
+            voice_name = qs.get("voice_name", ["dafeiyu"])[0]
+            text = qs.get("text", ["你好呀，这是我的声音试听，听起来怎么样？"])[0]
+            breeze = STATE["breeze_client"]
+            ok, wav_data = breeze.speak(voice_name, text)
+            if ok:
+                self.send_response(200)
+                self.send_header("Content-Type", "audio/wav")
+                self.send_header("Content-Length", str(len(wav_data)))
+                self.send_header("Cache-Control", "no-cache")
+                self.end_headers()
+                self.wfile.write(wav_data)
+            else:
+                self.send_json({"ok": False, "message": str(wav_data)}, 500)
             return
 
         # 检查基础插件完整性
@@ -305,7 +376,9 @@ class ConfigRequestHandler(BaseHTTPRequestHandler):
         # 语音模块前置条件环境自检
         if path == "/api/voice/env":
             info = check_breeze_environment()
-            info["voice_enabled"] = STATE.get("voice_enabled", False)
+            v_info = get_active_voice_info()
+            info["voice_enabled"] = STATE.get("voice_enabled", False) or v_info.get("enabled", False)
+            info["active_voice"] = v_info.get("voice_name", "dafeiyu")
             self.send_json({"ok": True, "data": info})
             return
 
@@ -604,30 +677,23 @@ class ConfigRequestHandler(BaseHTTPRequestHandler):
         # 5. 试听生成
         if path == "/api/voice/preview":
             length = int(self.headers.get("Content-Length", 0))
-            body = json.loads(self.rfile.read(length).decode("utf-8"))
+            body = json.loads(self.rfile.read(length).decode("utf-8")) if length else {}
             voice_name = body.get("voice_name", "dafeiyu")
             text = body.get("text", "在呢在呢，这么晚还不睡，是不是又在偷偷吃夜宵？")
 
             breeze = STATE["breeze_client"]
             ok, wav_data = breeze.speak(voice_name, text)
             if ok:
-                self.send_response(200)
-                self.send_header("Content-Type", "audio/wav")
-                self.send_header("Content-Length", str(len(wav_data)))
-                self.end_headers()
-                self.wfile.write(wav_data)
+                b64 = base64.b64encode(wav_data).decode("ascii")
+                self.send_json({"ok": True, "audio_base64": b64, "voice_name": voice_name})
             else:
                 self.send_json({"ok": False, "message": str(wav_data)}, 500)
             return
 
         # 6. 绑定 Breeze 音色到 AstrBot
         if path == "/api/voice/apply":
-            client = STATE["astrbot_client"]
-            if not client or not client.token:
-                self.send_json({"ok": False, "message": "尚未登录 AstrBot"}, 401)
-                return
             length = int(self.headers.get("Content-Length", 0))
-            body = json.loads(self.rfile.read(length).decode("utf-8"))
+            body = json.loads(self.rfile.read(length).decode("utf-8")) if length else {}
             voice_name = body.get("voice_name", "dafeiyu")
 
             tts_provider_id = f"Breeze语音-{voice_name}"
@@ -645,26 +711,107 @@ class ConfigRequestHandler(BaseHTTPRequestHandler):
                 "proxy": ""
             }
 
-            pid = urllib.parse.quote(tts_provider_id, safe="")
-            cur = client.call("GET", f"/providers/{pid}")
-            if client.is_ok(cur) and isinstance(cur.get("data"), dict) and cur["data"].get("id") == tts_provider_id:
-                merged = {**cur["data"], **conf}
-                r = client.call("PUT", f"/providers/{pid}", {"config": merged})
+            client = STATE.get("astrbot_client")
+            if client and client.token:
+                try:
+                    pid = urllib.parse.quote(tts_provider_id, safe="")
+                    cur = client.call("GET", f"/providers/{pid}")
+                    if client.is_ok(cur) and isinstance(cur.get("data"), dict) and cur["data"].get("id") == tts_provider_id:
+                        merged = {**cur["data"], **conf}
+                        client.call("PUT", f"/providers/{pid}", {"config": merged})
+                    else:
+                        client.call("POST", "/providers", {"config": conf})
+
+                    cfg = client.get_default_config()
+                    if cfg:
+                        tts = cfg.setdefault("provider_tts_settings", {})
+                        tts.update({
+                            "enable": True,
+                            "provider_id": tts_provider_id,
+                            "trigger_probability": 0.33
+                        })
+                        client.update_default_config(cfg)
+                except Exception:
+                    pass
+
+            # 无论在线与否，直接落盘更新 cmd_config.json 保证持久生效
+            instances = detect_astrbot_instances()
+            if instances and instances[0].get("dir"):
+                cand = os.path.join(instances[0]["dir"], "data", "cmd_config.json")
+                if not os.path.exists(cand):
+                    cand = os.path.join(instances[0]["dir"], "core", "data", "cmd_config.json")
+                if os.path.exists(cand):
+                    try:
+                        cfg_disk = json.load(open(cand, encoding="utf-8-sig"))
+                        providers = cfg_disk.setdefault("provider", [])
+                        exist_p = next((p for p in providers if p.get("id") == tts_provider_id or p.get("provider_type") == "text_to_speech"), None)
+                        if exist_p:
+                            exist_p.update(conf)
+                        else:
+                            providers.append(conf)
+                        tts_s = cfg_disk.setdefault("provider_tts_settings", {})
+                        tts_s.update({
+                            "enable": True,
+                            "provider_id": tts_provider_id,
+                            "trigger_probability": 0.33
+                        })
+                        with open(cand, "w", encoding="utf-8") as f:
+                            json.dump(cfg_disk, f, ensure_ascii=False, indent=2)
+                    except Exception:
+                        pass
+
+            STATE["voice_enabled"] = True
+            self.send_json({"ok": True, "message": f"已成功将音色 [{voice_name}] 设为 AstrBot 默认语音！"})
+            return
+
+        # 6.01 导入与优化自定义表情包
+        if path == "/api/memes/upload":
+            fields, files, all_files = parse_multipart(self.rfile, self.headers)
+            pack_id = (fields.get("pack_id") or "").strip()
+            pack_name = (fields.get("pack_name") or "").strip()
+
+            zip_item = next((item for item in all_files if item["filename"].lower().endswith(".zip")), None)
+            zip_bytes = zip_item["data"] if zip_item else None
+
+            valid_exts = (".jpg", ".jpeg", ".png", ".gif", ".webp")
+            files_map = {item["filename"]: item["data"] for item in all_files if item["filename"].lower().endswith(valid_exts)}
+
+            if not zip_bytes and not files_map:
+                self.send_json({"ok": False, "message": "请上传表情图片文件（支持 .jpg, .png, .gif, .webp）或 .zip 压缩包"}, 400)
+                return
+
+            if not pack_name and zip_item:
+                pack_name = os.path.splitext(zip_item["filename"])[0]
+
+            if not pack_id and pack_name:
+                pack_id = pack_name
+
+            if not pack_name: pack_name = "自定义表情包"
+            if not pack_id: pack_id = f"custom_meme_{uuid.uuid4().hex[:6]}"
+
+            ok, res = import_and_optimize_meme_pack(pack_id, pack_name, files_map=files_map, zip_bytes=zip_bytes)
+            if ok:
+                self.send_json({"ok": True, "data": res})
             else:
-                r = client.call("POST", "/providers", {"config": conf})
+                self.send_json({"ok": False, "message": str(res)}, 400)
+            return
 
-            # 更新 default profile 的 TTS 设置
-            cfg = client.get_default_config()
-            if cfg:
-                tts = cfg.setdefault("provider_tts_settings", {})
-                tts.update({
-                    "enable": True,
-                    "provider_id": tts_provider_id,
-                    "trigger_probability": 0.33
-                })
-                client.update_default_config(cfg)
+        # 6.02 一键同步全部本地表情包到 AstrBot
+        if path == "/api/memes/sync_all":
+            ok, msg = sync_all_local_memes_to_astrbot()
+            self.send_json({"ok": ok, "message": msg})
+            return
 
-            self.send_json({"ok": True, "message": f"已将音色 [{voice_name}] 设为 AstrBot 默认语音！"})
+        # 6.03 删除本地表情包
+        if path == "/api/memes/delete":
+            length = int(self.headers.get("Content-Length", 0))
+            body = json.loads(self.rfile.read(length).decode("utf-8")) if length else {}
+            pack_id = (body.get("pack_id") or "").strip()
+            if not pack_id:
+                self.send_json({"ok": False, "message": "表情包 ID 不能为空"}, 400)
+                return
+            ok, msg = delete_local_meme_pack(pack_id)
+            self.send_json({"ok": ok, "message": msg})
             return
 
         # 6.1 开启/关闭语音克隆模块

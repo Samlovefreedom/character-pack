@@ -8,15 +8,23 @@
     :root {
       --primary: #4361ee;
       --primary-hover: #3753db;
+      --primary-light: #eef2ff;
       --bg: #f8fafc;
       --card-bg: #ffffff;
-      --text: #1e293b;
+      --text: #0f172a;
       --text-muted: #64748b;
       --border: #e2e8f0;
       --success: #10b981;
+      --success-light: #ecfdf5;
       --danger: #ef4444;
+      --danger-light: #fef2f2;
       --warning: #f59e0b;
+      --warning-light: #fffbeb;
       --radius: 12px;
+      --radius-sm: 8px;
+      --shadow-sm: 0 1px 2px rgba(0,0,0,0.04);
+      --shadow-md: 0 4px 12px rgba(15,23,42,0.06);
+      --shadow-lg: 0 10px 25px rgba(15,23,42,0.1);
     }
 
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -39,7 +47,7 @@
       position: sticky;
       top: 0;
       z-index: 100;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.02);
+      box-shadow: var(--shadow-sm);
     }
     .logo-area { display: flex; align-items: center; gap: 12px; }
     .logo-badge {
@@ -49,6 +57,7 @@
       font-size: 13px;
       padding: 6px 12px;
       border-radius: 8px;
+      letter-spacing: 0.5px;
     }
     .title-sub { font-size: 13px; color: var(--text-muted); }
 
@@ -62,13 +71,14 @@
     .status-pill {
       font-size: 12px;
       font-weight: 600;
-      padding: 4px 10px;
+      padding: 5px 12px;
       border-radius: 16px;
       display: inline-flex;
       align-items: center;
       gap: 6px;
       background: #f1f5f9;
       color: #475569;
+      transition: all 0.2s;
     }
     .status-pill .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
     .status-pill.online .dot { background: var(--success); }
@@ -76,7 +86,7 @@
     .status-pill.offline .dot { background: var(--danger); }
     .status-pill.offline { background: #fee2e2; color: #991b1b; }
 
-    /* 核心导航 Tabs（仅保留 3 个功能板块） */
+    /* 核心导航 Tabs（3个功能板块） */
     .nav-tabs {
       display: flex;
       gap: 8px;
@@ -103,6 +113,7 @@
       justify-content: center;
       gap: 8px;
     }
+    .tab-btn:hover { color: var(--text); }
     .tab-btn.active {
       background: var(--card-bg);
       color: var(--primary);
@@ -117,7 +128,11 @@
     }
 
     .tab-panel { display: none; }
-    .tab-panel.active { display: block; }
+    .tab-panel.active { display: block; animation: fadeIn 0.2s ease-in-out; }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(4px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
 
     /* 卡片组件 */
     .card {
@@ -126,7 +141,11 @@
       border-radius: var(--radius);
       padding: 24px;
       margin-bottom: 20px;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.02);
+      box-shadow: var(--shadow-sm);
+      transition: box-shadow 0.2s;
+    }
+    .card:hover {
+      box-shadow: var(--shadow-md);
     }
     .card-title {
       font-size: 16px;
@@ -136,7 +155,7 @@
       align-items: center;
       gap: 8px;
     }
-    .card-desc { font-size: 13px; color: var(--text-muted); margin-bottom: 18px; }
+    .card-desc { font-size: 13px; color: var(--text-muted); margin-bottom: 18px; line-height: 1.6; }
 
     /* 表单组件 */
     .form-group { margin-bottom: 16px; }
@@ -147,7 +166,7 @@
       margin-bottom: 6px;
       color: var(--text);
     }
-    .form-hint { font-size: 12px; color: var(--text-muted); margin-top: 4px; }
+    .form-hint { font-size: 12px; color: var(--text-muted); margin-top: 5px; }
     .input-control {
       width: 100%;
       padding: 10px 14px;
@@ -156,14 +175,14 @@
       font-size: 14px;
       background: #fff;
       color: var(--text);
-      transition: border 0.2s;
+      transition: border 0.2s, box-shadow 0.2s;
     }
     .input-control:focus {
       outline: none;
       border-color: var(--primary);
       box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.15);
     }
-    textarea.input-control { font-family: monospace; resize: vertical; min-height: 260px; line-height: 1.6; }
+    textarea.input-control { font-family: "Consolas", "Courier New", monospace; resize: vertical; min-height: 260px; line-height: 1.6; }
 
     /* 按钮 */
     .btn {
@@ -179,22 +198,32 @@
       border: none;
       transition: all 0.2s;
       text-decoration: none;
+      user-select: none;
     }
+    .btn:active { transform: scale(0.98); }
     .btn-primary { background: var(--primary); color: #fff; }
     .btn-primary:hover { background: var(--primary-hover); }
     .btn-success { background: var(--success); color: #fff; }
     .btn-success:hover { background: #059669; }
+    .btn-danger { background: var(--danger); color: #fff; }
+    .btn-danger:hover { background: #dc2626; }
     .btn-outline {
       background: transparent;
       border: 1px solid var(--border);
       color: var(--text);
     }
-    .btn-outline:hover { background: #f1f5f9; }
+    .btn-outline:hover { background: #f1f5f9; border-color: #cbd5e1; }
     .btn-sm { padding: 6px 12px; font-size: 13px; }
-    .btn:disabled { opacity: 0.6; cursor: not-allowed; }
+    .btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
 
     .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
-    .grid-3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; }
+    .grid-3 { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; }
+
+    @media (max-width: 768px) {
+      .grid-2 { grid-template-columns: 1fr; }
+      .app-header { flex-direction: column; gap: 10px; align-items: flex-start; }
+      .nav-tabs { flex-direction: column; }
+    }
 
     /* 开关组件 */
     .switch {
@@ -220,17 +249,18 @@
       bottom: 3px;
       background-color: white;
       transition: .3s;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.2);
     }
     input:checked + .slider { background-color: var(--primary); }
     input:checked + .slider:before { transform: translateX(22px); }
     .slider.round { border-radius: 26px; }
     .slider.round:before { border-radius: 50%; }
 
-    /* 表情包卡片 */
-    .meme-card {
+    /* 通用卡片项 */
+    .item-card {
       border: 1px solid var(--border);
       border-radius: var(--radius);
-      padding: 18px;
+      padding: 16px;
       background: #fafbfc;
       display: flex;
       flex-direction: column;
@@ -238,20 +268,27 @@
       gap: 12px;
       transition: all 0.2s;
     }
-    .meme-card:hover {
+    .item-card:hover {
       border-color: var(--primary);
-      box-shadow: 0 4px 12px rgba(67, 97, 238, 0.1);
+      box-shadow: var(--shadow-sm);
     }
-    .meme-title { font-weight: 700; font-size: 15px; }
-    .meme-badge {
+    .item-card.active-item {
+      border-color: var(--primary);
+      background: #f0f4ff;
+    }
+    .item-title { font-weight: 700; font-size: 15px; display: flex; align-items: center; gap: 6px; }
+    .badge {
       display: inline-block;
       font-size: 11px;
       font-weight: 600;
       padding: 2px 8px;
       border-radius: 12px;
-      background: #e0e7ff;
-      color: #3730a3;
     }
+    .badge-primary { background: #e0e7ff; color: #3730a3; }
+    .badge-success { background: #dcfce7; color: #166534; }
+    .badge-warning { background: #fef3c7; color: #92400e; }
+    .badge-secondary { background: #f1f5f9; color: #475569; }
+
     .url-box {
       background: #f1f5f9;
       padding: 8px 12px;
@@ -268,7 +305,7 @@
     .drop-zone {
       border: 2px dashed #cbd5e1;
       border-radius: var(--radius);
-      padding: 26px;
+      padding: 24px;
       text-align: center;
       background: #f8fafc;
       cursor: pointer;
@@ -287,6 +324,7 @@
       display: flex;
       align-items: flex-start;
       gap: 10px;
+      line-height: 1.6;
     }
     .alert-info { background: #e0f2fe; color: #0369a1; border-left: 4px solid #0284c7; }
     .alert-success { background: #dcfce7; color: #15803d; border-left: 4px solid #22c55e; }
@@ -310,7 +348,7 @@
       position: fixed;
       top: 0; left: 0; right: 0; bottom: 0;
       background: rgba(15, 23, 42, 0.5);
-      backdrop-filter: blur(2px);
+      backdrop-filter: blur(3px);
       display: none;
       align-items: center;
       justify-content: center;
@@ -318,11 +356,11 @@
     }
     .modal-card {
       background: #fff;
-      width: 90%;
+      width: 92%;
       max-width: 580px;
       border-radius: var(--radius);
       padding: 24px;
-      box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+      box-shadow: var(--shadow-lg);
       max-height: 85vh;
       overflow-y: auto;
     }
@@ -335,13 +373,71 @@
     .close-btn {
       background: none;
       border: none;
-      font-size: 20px;
+      font-size: 22px;
       cursor: pointer;
       color: var(--text-muted);
+      line-height: 1;
     }
+
+    /* 表情包图片缩略图条 */
+    .meme-preview-row {
+      display: flex;
+      gap: 8px;
+      overflow-x: auto;
+      padding: 6px 0;
+      margin: 8px 0;
+    }
+    .meme-thumb {
+      width: 60px;
+      height: 60px;
+      object-fit: cover;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: #fff;
+      flex-shrink: 0;
+      transition: transform 0.15s;
+    }
+    .meme-thumb:hover { transform: scale(1.1); z-index: 2; }
+
+    /* 全局 Toast 通知 */
+    #toast-container {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      z-index: 9999;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      pointer-events: none;
+    }
+    .toast {
+      min-width: 260px;
+      max-width: 420px;
+      padding: 12px 18px;
+      border-radius: 10px;
+      font-size: 14px;
+      font-weight: 500;
+      color: #fff;
+      box-shadow: 0 8px 20px rgba(0,0,0,0.18);
+      opacity: 0;
+      transform: translateY(16px);
+      transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+      pointer-events: auto;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .toast.show { opacity: 1; transform: translateY(0); }
+    .toast-success { background: #059669; }
+    .toast-error { background: #dc2626; }
+    .toast-warning { background: #d97706; }
+    .toast-info { background: #2563eb; }
   </style>
 </head>
 <body>
+
+  <!-- Toast 容器 -->
+  <div id="toast-container"></div>
 
   <!-- 顶部精简导航与状态栏 -->
   <header class="app-header">
@@ -349,7 +445,7 @@
       <div class="logo-badge">AstrBot Config</div>
       <div>
         <h2 style="font-size: 16px; font-weight: 700;">角色个性化配置中心</h2>
-        <div class="title-sub">性格设定 · Breeze本地语音克隆 · 表情包自选</div>
+        <div class="title-sub">性格设定 · Breeze本地语音克隆 · 表情包自选与导入</div>
       </div>
     </div>
     <div class="status-bar">
@@ -357,7 +453,7 @@
       <span class="status-pill" id="chip-napcat"><span class="dot"></span> NapCat: 检测中...</span>
       <span class="status-pill" id="chip-plugins"><span class="dot"></span> 插件底座: 8/8 就绪</span>
       <span class="status-pill" id="chip-breeze"><span class="dot"></span> Breeze语音: 检测中...</span>
-      <button class="btn btn-outline btn-sm" onclick="openSystemSettingsModal()" title="底座连接与设置" style="padding: 4px 8px;">
+      <button class="btn btn-outline btn-sm" onclick="openSystemSettingsModal()" title="底座连接与设置" style="padding: 4px 10px;">
         <span>⚙️ 设置</span>
       </button>
     </div>
@@ -372,7 +468,7 @@
       <span>🎙️ 2. 本地声音克隆 (可选)</span>
     </button>
     <button class="tab-btn" onclick="switchTab('tab-memes')">
-      <span>🖼️ 3. 表情包开源管理</span>
+      <span>🖼️ 3. 表情包开源与导入管理</span>
     </button>
   </nav>
 
@@ -381,6 +477,23 @@
 
     <!-- 板块 1: 角色性格定制 (默认展示) -->
     <section id="tab-persona" class="tab-panel active">
+
+      <!-- 当前正在生效的性格提示卡片 -->
+      <div id="active-persona-banner" class="alert-banner alert-success" style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span style="font-size: 20px;">🟢</span>
+          <div>
+            <strong>AstrBot 当前生效人格：</strong>
+            <span id="active-persona-name" style="font-weight: 700; color: #166534;">正在读取...</span>
+            <div style="font-size: 12px; color: #15803d; margin-top: 2px;">
+              系统已为您自动载入当前正在运行的人格与设定，修改后点击下方保存即可立即生效。
+            </div>
+          </div>
+        </div>
+        <button class="btn btn-sm btn-outline" onclick="loadReferencePersona(true)" style="background: #fff; white-space: nowrap;">
+          <span>📋 载入初始「大肥鱼」范式</span>
+        </button>
+      </div>
 
       <!-- 主人 QQ 设置卡片 -->
       <div class="card" style="border-left: 4px solid var(--primary);">
@@ -395,11 +508,11 @@
         </div>
       </div>
 
-      <!-- 单一权威参考案例编辑器 -->
+      <!-- 性格编辑器 -->
       <div class="card">
-        <div class="card-title">📖 角色性格 Prompt 设定（参考案例：大肥鱼）</div>
+        <div class="card-title">📖 角色性格 Prompt 设定</div>
         <div class="card-desc">
-          系统已为您载入配置包精调的标准参考案例。您可以直接使用或自由微调说话习惯、长短及语气，一键直接导入生效！
+          您可以自由微调角色的说话习惯、长短及语气。修改完成后点击保存，在 QQ 中发送 <code>/reset</code> 即可使新人格生效！
         </div>
 
         <div class="grid-2">
@@ -417,16 +530,16 @@
 
         <div class="form-group">
           <label class="form-label">性格 Prompt 内容 (支持 Markdown)</label>
-          <textarea id="persona-content" class="input-control" placeholder="正在读取大肥鱼参考人设..."></textarea>
-          <div class="form-hint">💡 建议在设定中明确规定回复长短（如 1~3 句话）、口吻特点。在 QQ 发送 <code>/reset</code> 即可让新人格生效。</div>
+          <textarea id="persona-content" class="input-control" placeholder="正在读取生效人设..."></textarea>
+          <div class="form-hint">💡 建议在设定中明确规定回复长短（如 1~3 句话）、口吻特点与称呼习惯。</div>
         </div>
 
         <div style="display: flex; gap: 12px; flex-wrap: wrap;">
           <button class="btn btn-primary" onclick="savePersonaToAstrBot()">
-            <span>✨ 一键保存并导入此性格到 AstrBot</span>
+            <span>✨ 一键保存并生效此性格</span>
           </button>
-          <button class="btn btn-outline" onclick="loadReferencePersona()">
-            <span>🔄 恢复参考案例默认内容</span>
+          <button class="btn btn-outline" onclick="loadReferencePersona(true)">
+            <span>📋 载入初始「大肥鱼」参考范式</span>
           </button>
           <button class="btn btn-outline" onclick="exportPersonaToLocal()">
             <span>💾 另存为本地文件 (.md)</span>
@@ -444,7 +557,7 @@
           <div>
             <div class="card-title" style="margin: 0;">🎙️ 本地语音克隆模块开关 (Breeze TTS 2)</div>
             <div class="card-desc" id="voice-switch-desc" style="margin-top: 4px; margin-bottom: 0;">
-              当前状态：<strong>未启用</strong>（语音模块可不开；若不开，机器人将以纯文本与表情包进行聊天，不占用显存）
+              当前状态：<strong>检测中...</strong>
             </div>
           </div>
           <div style="display: flex; align-items: center; gap: 10px;">
@@ -504,10 +617,18 @@
         <!-- 条件全部就绪后解锁的声音克隆与试听绑定区 -->
         <div id="voice-ready-area" style="display: none;">
 
-          <!-- 已有音色快速挑选 -->
+          <!-- 已有音色快速挑选与试听 -->
           <div class="card">
-            <div class="card-title">📚 本地已有音色库</div>
-            <div class="card-desc">检测到本地 Breeze 中已存在的音色。您可以直接试听或一键绑定。</div>
+            <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:12px;">
+              <div>
+                <div class="card-title" style="margin-bottom:4px;">📚 本地已有音色库</div>
+                <div class="card-desc" style="margin-bottom:0;">
+                  检测到本地 Breeze 中已注册的音色。您可以直接<strong>在线试听</strong>或一键设为 AstrBot 发音人。
+                </div>
+              </div>
+              <button class="btn btn-sm btn-outline" onclick="loadVoiceList()">🔄 刷新音色</button>
+            </div>
+            
             <div id="existing-voices-container" class="grid-3">
               <div style="color:var(--text-muted); font-size:13px;">正在加载音色库...</div>
             </div>
@@ -516,7 +637,7 @@
           <!-- 录音模仿克隆区 -->
           <div class="card">
             <div class="card-title">🎙️ 导入参考音频进行声音克隆与模仿</div>
-            <div class="card-desc">拖入一段 5~15 秒人声录音，录入原话台词，即可秒级克隆！</div>
+            <div class="card-desc">拖入一段 5~15 秒清晰人声录音，录入原话台词，即可秒级克隆！</div>
 
             <div class="form-group">
               <label class="form-label">音色名称 (Voice ID)</label>
@@ -552,7 +673,7 @@
                 <input type="text" id="voice-preview-text" class="input-control" value="在呢在呢，这么晚还不睡，是不是又在偷偷吃夜宵？">
               </div>
               <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
-                <button class="btn btn-outline" onclick="previewVoiceSpeech()">
+                <button class="btn btn-outline" id="btn-preview-speech" onclick="previewVoiceSpeech()">
                   <span>🔊 合成试听</span>
                 </button>
                 <audio id="voice-audio-player" controls style="display:none; height: 38px;"></audio>
@@ -567,15 +688,76 @@
       </div>
     </section>
 
-    <!-- 板块 3: 表情包开源管理 -->
+    <!-- 板块 3: 表情包开源与导入管理 -->
     <section id="tab-memes" class="tab-panel">
+
+      <!-- 模块 A: 自定义表情包库 (本地导入与优化) -->
+      <div class="card" style="border-left: 4px solid var(--primary);">
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px;">
+          <div>
+            <div class="card-title">📁 自定义表情包管理 (导入并优化)</div>
+            <div class="card-desc" style="margin-bottom: 0;">
+              支持将您自己的表情包（ZIP 压缩包或单张/多张图片）导入项目。系统将<strong>自动优化</strong>：过滤垃圾非图片文件、MD5 秒级去重、生成 <code>manifest.json</code> 描述清单，并自动同步注册至 AstrBot！
+            </div>
+          </div>
+          <button class="btn btn-sm btn-outline" onclick="syncAllMemesToAstrBot()">
+            <span>⚡ 一键同步全部到 AstrBot</span>
+          </button>
+        </div>
+
+        <div style="background: #f8fafc; border: 1px solid var(--border); border-radius: var(--radius); padding: 18px; margin: 16px 0;">
+          <div class="grid-2">
+            <div class="form-group" style="margin-bottom: 0;">
+              <label class="form-label">表情包代号 (Pack ID)</label>
+              <input type="text" id="custom-meme-id" class="input-control" placeholder="如: my_pack 或 cat_memes" value="custom_pack">
+              <div class="form-hint">仅限英文字母、数字和下划线</div>
+            </div>
+            <div class="form-group" style="margin-bottom: 0;">
+              <label class="form-label">表情包显示名称 (Pack Name)</label>
+              <input type="text" id="custom-meme-name" class="input-control" placeholder="如: 我的可爱猫猫包" value="我的自定义表情包">
+              <div class="form-hint">在 AstrBot 表情包列表中显示的名称</div>
+            </div>
+          </div>
+
+          <div class="form-group" style="margin-top: 14px; margin-bottom: 0;">
+            <label class="form-label">选择表情包文件 (支持 .zip 压缩包或多张图片：PNG, JPG, GIF, WEBP)</label>
+            <div class="drop-zone" id="meme-drop-zone" onclick="document.getElementById('meme-file-input').click()">
+              <input type="file" id="meme-file-input" multiple accept=".zip,image/png,image/jpeg,image/gif,image/webp" style="display: none;" onchange="handleMemeFileSelect(this.files)">
+              <div style="font-size: 28px; margin-bottom: 6px;">🖼️</div>
+              <div style="font-weight: 600;" id="meme-drop-text">点击或将 ZIP 压缩包 / 多张表情图片拖入此处</div>
+              <div class="form-hint">系统将自动过滤非图片文件、进行 MD5 查重并规范化归档</div>
+            </div>
+          </div>
+
+          <div style="margin-top: 14px; display: flex; justify-content: flex-end;">
+            <button class="btn btn-primary" id="btn-upload-meme" onclick="uploadAndOptimizeMemePack()">
+              <span>🚀 立即导入并优化表情包</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- 本地自定义表情包列表 -->
+        <div style="margin-top: 20px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+            <h4 style="font-size:14px; font-weight:700;">📂 本地表情包库 (character-pack/memes)</h4>
+            <button class="btn btn-sm btn-outline" onclick="loadLocalMemePacks()">🔄 刷新列表</button>
+          </div>
+          <div id="local-memes-container" class="grid-2">
+            <div style="color:var(--text-muted); font-size:13px;">正在加载本地表情包...</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 模块 B: 社区开源表情包库 -->
       <div class="card">
-        <div class="card-title">🖼️ 表情包自选与开源源头透视</div>
-        <div class="card-desc">此处完整透明公开表情包的 GitHub 开源地址与本地落盘路径。您可以单独选择安装哪一套。</div>
+        <div class="card-title">🌐 社区开源表情包库 (AstrBot 官方源)</div>
+        <div class="card-desc">
+          公开社区开源表情包库与本地落盘路径。您可以单独下载安装任一套，或设为主力套。
+        </div>
 
         <div class="alert-banner alert-info">
           <div style="width: 100%;">
-            <strong>📍 表情包系统透明信息：</strong><br>
+            <strong>📍 开源与落盘透明信息：</strong><br>
             • 社区索引总仓库：<a href="https://github.com/anka-afk/astrbot-meme-pack-index" target="_blank">https://github.com/anka-afk/astrbot-meme-pack-index</a><br>
             • 本地实际落盘目录：<code id="meme-local-path">C:\Users\...\data\plugins\astrbot_plugin_meme_manager\packs\</code>
             <div style="margin-top: 8px;">
@@ -587,7 +769,7 @@
         </div>
 
         <div class="grid-2" id="meme-packs-container">
-          <!-- 动态加载表情包卡片 -->
+          <!-- 动态加载社区表情包卡片 -->
         </div>
 
         <div style="margin-top: 20px;">
@@ -595,6 +777,7 @@
           <div class="log-box" id="meme-log" style="background:#1e1e24; color:#a7f3d0; font-family:monospace; font-size:12px; padding:12px; border-radius:8px; height:100px; overflow-y:auto;">点击上方卡片上的单独操作按钮查看进度...</div>
         </div>
       </div>
+
     </section>
 
   </main>
@@ -652,7 +835,31 @@
   </div>
 
   <script>
-    // Tab 切换逻辑
+    // ===== 全局 Toast 通知 =====
+    function showToast(message, type = 'info', duration = 3500) {
+      const container = document.getElementById('toast-container');
+      const toast = document.createElement('div');
+      toast.className = `toast toast-${type}`;
+      
+      const iconMap = {
+        success: '✅',
+        error: '❌',
+        warning: '⚠️',
+        info: 'ℹ️'
+      };
+      
+      toast.innerHTML = `<span>${iconMap[type] || 'ℹ️'}</span><span>${message}</span>`;
+      container.appendChild(toast);
+      
+      requestAnimationFrame(() => toast.classList.add('show'));
+      
+      setTimeout(() => {
+        toast.classList.remove('show');
+        setTimeout(() => toast.remove(), 300);
+      }, duration);
+    }
+
+    // ===== Tab 切换逻辑 =====
     function switchTab(tabId) {
       document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
       document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
@@ -660,11 +867,15 @@
       const idx = ['tab-persona', 'tab-voice', 'tab-memes'].indexOf(tabId);
       if (idx !== -1) document.querySelectorAll('.tab-btn')[idx].classList.add('active');
 
+      if (tabId === 'tab-persona') loadActivePersona();
       if (tabId === 'tab-voice') checkVoiceEnv();
-      if (tabId === 'tab-memes') loadMemePacks();
+      if (tabId === 'tab-memes') {
+        loadLocalMemePacks();
+        loadMemePacks();
+      }
     }
 
-    // 状态自检
+    // ===== 状态自检 =====
     async function checkStatus() {
       try {
         const res = await fetch('/api/status');
@@ -721,6 +932,10 @@
           document.getElementById('owner-qq-input').value = data.owner_qq;
           document.getElementById('persona-owner-display').value = data.owner_qq;
         }
+
+        if (data.active_persona && data.active_persona.persona_id) {
+          document.getElementById('active-persona-name').innerText = `【${data.active_persona.persona_id}】`;
+        }
       } catch (e) {
         console.error("检测状态失败", e);
       }
@@ -763,17 +978,48 @@
       document.getElementById('persona-owner-display').value = val;
     }
 
-    // 加载单一参考案例 (大肥鱼)
-    async function loadReferencePersona() {
+    // ===== 板块 1: 性格定制 =====
+    // 加载当前生效的性格（优先显示已存在性格，不重置到初始范式）
+    async function loadActivePersona() {
+      try {
+        const res = await fetch('/api/persona/current');
+        const out = await res.json();
+        if (out.ok && out.persona_id) {
+          document.getElementById('persona-id').value = out.persona_id;
+          document.getElementById('persona-content').value = out.prompt || '';
+          document.getElementById('active-persona-name').innerText = `【${out.persona_id}】`;
+          if (out.owner_qq) {
+            document.getElementById('owner-qq-input').value = out.owner_qq;
+            document.getElementById('persona-owner-display').value = out.owner_qq;
+          }
+          return;
+        }
+      } catch (e) {
+        console.warn("读取当前生效人设失败，将载入参考范式", e);
+      }
+      // 若无已生效配置，回退载入大肥鱼
+      loadReferencePersona(false);
+    }
+
+    // 加载参考案例 (大肥鱼)
+    async function loadReferencePersona(confirmReplace = false) {
+      if (confirmReplace) {
+        const currentPrompt = document.getElementById('persona-content').value.trim();
+        if (currentPrompt && !confirm("确定要载入初始「大肥鱼」参考范式吗？当前编辑区的内容将被覆盖。")) {
+          return;
+        }
+      }
+
       try {
         const res = await fetch('/api/persona/reference');
         const out = await res.json();
         if (out.ok) {
           document.getElementById('persona-id').value = out.persona_id || "大肥鱼";
           document.getElementById('persona-content').value = out.prompt || "";
+          showToast("已成功载入「大肥鱼」参考范式", "info");
         }
       } catch (e) {
-        console.error("加载参考案例失败", e);
+        showToast("加载参考范式失败: " + e.message, "error");
       }
     }
 
@@ -784,7 +1030,7 @@
       const owner_qq = document.getElementById('owner-qq-input').value.trim();
 
       if (!prompt) {
-        alert("请输入人设 Prompt 内容！");
+        showToast("请输入人设 Prompt 内容！", "warning");
         return;
       }
 
@@ -796,12 +1042,13 @@
         });
         const out = await res.json();
         if (out.ok) {
-          alert("🎉 " + out.message + "\n在 QQ 中向机器人发送 /reset 即可立即生效！");
+          document.getElementById('active-persona-name').innerText = `【${persona_id}】`;
+          showToast(`🎉 人格【${persona_id}】已成功生效！在 QQ 发送 /reset 即可刷新。`, "success", 5000);
         } else {
-          alert("❌ " + out.message);
+          showToast("❌ " + out.message, "error", 5000);
         }
       } catch (e) {
-        alert("请求异常: " + e.message);
+        showToast("请求异常: " + e.message, "error");
       }
     }
 
@@ -816,13 +1063,13 @@
           body: JSON.stringify({name, prompt})
         });
         const out = await res.json();
-        alert(out.message || "已导出");
+        showToast(out.message || "已成功导出到本地", "success");
       } catch (e) {
-        alert("导出异常: " + e.message);
+        showToast("导出异常: " + e.message, "error");
       }
     }
 
-    // 切换语音模块开关 (可以不开)
+    // ===== 板块 2: 声音克隆 (可选启用) =====
     async function onToggleVoiceModule(enabled) {
       try {
         const res = await fetch('/api/voice/toggle', {
@@ -832,10 +1079,13 @@
         });
         updateVoiceModuleUI(enabled);
         if (enabled) {
+          showToast("语音模块已开启，正在自检环境...", "info");
           checkVoiceEnv();
+        } else {
+          showToast("语音模块已关闭，机器人转为纯文本模式", "info");
         }
       } catch (e) {
-        alert("切换语音模块失败: " + e.message);
+        showToast("切换语音模块失败: " + e.message, "error");
       }
     }
 
@@ -914,7 +1164,7 @@
       try {
         const res = await fetch('/api/voice/start', { method: 'POST' });
         const out = await res.json();
-        alert(out.message || "启动指令已执行");
+        showToast(out.message || "启动指令已执行", "info");
         let count = 0;
         const timer = setInterval(async () => {
           count++;
@@ -923,10 +1173,11 @@
           if (runText.includes("运行中") || count > 8) {
             clearInterval(timer);
             if (btn) { btn.disabled = false; btn.innerText = "▶ 一键启动 Breeze 语音服务"; }
+            showToast("Breeze 语音服务已成功上线！", "success");
           }
         }, 1500);
       } catch (e) {
-        alert("启动失败: " + e.message);
+        showToast("启动失败: " + e.message, "error");
         if (btn) { btn.disabled = false; btn.innerText = "▶ 一键启动 Breeze 语音服务"; }
       }
     }
@@ -948,6 +1199,7 @@
       if (!files || files.length === 0) return;
       selectedAudioFile = files[0];
       document.getElementById('audio-drop-text').innerText = '✔ 已选择: ' + selectedAudioFile.name + ' (' + Math.round(selectedAudioFile.size / 1024) + ' KB)';
+      showToast("已载入音频: " + selectedAudioFile.name, "info");
     }
 
     // 开始声音克隆
@@ -955,9 +1207,9 @@
       const name = document.getElementById('voice-name').value.trim();
       const ref_text = document.getElementById('voice-ref-text').value.trim();
 
-      if (!name) { alert("请输入音色代号名称！"); return; }
-      if (!selectedAudioFile) { alert("请先拖入或选择一段 5~15 秒的参考录音文件！"); return; }
-      if (!ref_text) { alert("请一字不差录入参考音频中所说的原话台词！"); return; }
+      if (!name) { showToast("请输入音色代号名称！", "warning"); return; }
+      if (!selectedAudioFile) { showToast("请先拖入或选择一段 5~15 秒的参考录音文件！", "warning"); return; }
+      if (!ref_text) { showToast("请一字不差录入参考音频中所说的原话台词！", "warning"); return; }
 
       const btn = document.getElementById('btn-clone-voice');
       btn.disabled = true;
@@ -972,27 +1224,33 @@
         const res = await fetch('/api/voice/clone', { method: 'POST', body: fd });
         const out = await res.json();
         if (out.ok) {
-          alert("🎉 音色 [" + name + "] 克隆成功！您可在下方合成试听，或直接绑定为 AstrBot 默认发音人。");
+          showToast("🎉 音色 [" + name + "] 克隆成功！您可在下方直接试听或绑定", "success", 5000);
           loadVoiceList();
         } else {
-          alert("❌ 克隆失败: " + out.message);
+          showToast("❌ 克隆失败: " + out.message, "error", 5000);
         }
       } catch (e) {
-        alert("克隆请求异常: " + e.message);
+        showToast("克隆请求异常: " + e.message, "error");
       } finally {
         btn.disabled = false;
         btn.innerText = "⚡ 开始克隆并注册音色";
       }
     }
 
-    // 试听合成
-    async function previewVoiceSpeech() {
-      const voice_name = document.getElementById('voice-name').value.trim();
-      const text = document.getElementById('voice-preview-text').value.trim();
-      if (!text) { alert("请输入试听台词！"); return; }
+    // 试听合成（修复音频试听问题，支持即时播放）
+    async function previewVoiceSpeech(customVoiceName = null, customButton = null) {
+      const voice_name = customVoiceName || document.getElementById('voice-name').value.trim();
+      const text = document.getElementById('voice-preview-text').value.trim() || "在呢在呢，今天想听我说点什么？";
+      
+      const mainBtn = document.getElementById('btn-preview-speech');
+      const targetBtn = customButton || mainBtn;
+      const originalText = targetBtn ? targetBtn.innerHTML : '';
+      if (targetBtn) {
+        targetBtn.disabled = true;
+        targetBtn.innerHTML = '<span>⏳ 合成中...</span>';
+      }
 
       const player = document.getElementById('voice-audio-player');
-      player.style.display = 'none';
 
       try {
         const res = await fetch('/api/voice/preview', {
@@ -1004,19 +1262,25 @@
         if (out.ok && out.audio_base64) {
           player.src = "data:audio/wav;base64," + out.audio_base64;
           player.style.display = 'inline-block';
-          player.play();
+          await player.play();
+          showToast(`正在播放【${voice_name}】试听音频 🔊`, "info", 3000);
         } else {
-          alert("试听合成失败: " + out.message);
+          showToast("试听合成失败: " + (out.message || "未知错误"), "error");
         }
       } catch (e) {
-        alert("合成请求异常: " + e.message);
+        showToast("合成请求异常: " + e.message, "error");
+      } finally {
+        if (targetBtn) {
+          targetBtn.disabled = false;
+          targetBtn.innerHTML = originalText;
+        }
       }
     }
 
     // 绑定音色到 AstrBot
     async function applyVoiceToAstrBot(voiceName) {
       const vname = voiceName || document.getElementById('voice-name').value.trim();
-      if (!vname) { alert("请指定音色代号！"); return; }
+      if (!vname) { showToast("请指定音色代号！", "warning"); return; }
 
       try {
         const res = await fetch('/api/voice/apply', {
@@ -1026,17 +1290,17 @@
         });
         const out = await res.json();
         if (out.ok) {
-          alert("🎉 " + out.message);
+          showToast("🎉 " + out.message, "success", 4000);
           loadVoiceList();
         } else {
-          alert("❌ 绑定失败: " + out.message);
+          showToast("❌ 绑定失败: " + out.message, "error");
         }
       } catch (e) {
-        alert("请求异常: " + e.message);
+        showToast("请求异常: " + e.message, "error");
       }
     }
 
-    // 读取本地音色库
+    // 读取本地音色库并渲染（突出当前生效音色）
     async function loadVoiceList() {
       const container = document.getElementById('existing-voices-container');
       try {
@@ -1058,19 +1322,23 @@
         container.innerHTML = '';
         voices.forEach(v => {
           const card = document.createElement('div');
-          card.className = 'meme-card';
           const isAct = (v.name === currentActive || v.id === currentActive);
+          card.className = 'item-card' + (isAct ? ' active-item' : '');
           card.innerHTML = `
             <div>
               <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
-                <span class="meme-title">${v.name}</span>
-                ${isAct ? '<span style="background:#dcfce7; color:#15803d; font-size:11px; padding:2px 8px; border-radius:12px; font-weight:bold;">当前使用中</span>' : ''}
+                <span class="item-title">🎙️ ${v.name}</span>
+                ${isAct ? '<span class="badge badge-success">⭐ 当前生效中</span>' : ''}
               </div>
               <div style="font-size:12px; color:var(--text-muted);">${v.description || '本地已注册音色'}</div>
             </div>
             <div style="display:flex; gap:8px; margin-top:8px;">
-              <button class="btn btn-sm btn-outline" onclick="quickPreviewVoice('${v.name}')">🔊 试听</button>
-              <button class="btn btn-sm ${isAct ? 'btn-outline' : 'btn-primary'}" onclick="applyVoiceToAstrBot('${v.name}')">${isAct ? '已绑定' : '⭐ 设为发音人'}</button>
+              <button class="btn btn-sm btn-outline" id="audition-btn-${v.name}" onclick="previewVoiceSpeech('${v.name}', this)">
+                <span>🔊 试听</span>
+              </button>
+              <button class="btn btn-sm ${isAct ? 'btn-outline' : 'btn-primary'}" onclick="applyVoiceToAstrBot('${v.name}')">
+                <span>${isAct ? '已绑定' : '⭐ 设为发音人'}</span>
+              </button>
             </div>
           `;
           container.appendChild(card);
@@ -1080,12 +1348,177 @@
       }
     }
 
-    function quickPreviewVoice(vname) {
-      document.getElementById('voice-name').value = vname;
-      previewVoiceSpeech();
+    // ===== 板块 3: 表情包管理 (本地导入优化 + 社区源) =====
+    let selectedMemeFiles = [];
+
+    const memeDropZone = document.getElementById('meme-drop-zone');
+    memeDropZone.addEventListener('dragover', (e) => { e.preventDefault(); memeDropZone.classList.add('dragover'); });
+    memeDropZone.addEventListener('dragleave', () => memeDropZone.classList.remove('dragover'));
+    memeDropZone.addEventListener('drop', (e) => {
+      e.preventDefault();
+      memeDropZone.classList.remove('dragover');
+      if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+        handleMemeFileSelect(e.dataTransfer.files);
+      }
+    });
+
+    function handleMemeFileSelect(files) {
+      if (!files || files.length === 0) return;
+      selectedMemeFiles = Array.from(files);
+      if (selectedMemeFiles.length === 1 && selectedMemeFiles[0].name.toLowerCase().endsWith('.zip')) {
+        document.getElementById('meme-drop-text').innerText = `✔ 已选择 ZIP 压缩包: ${selectedMemeFiles[0].name} (${Math.round(selectedMemeFiles[0].size / 1024)} KB)`;
+        // 自动提取可能的名字
+        const baseName = selectedMemeFiles[0].name.replace(/\.zip$/i, '');
+        if (!document.getElementById('custom-meme-name').value || document.getElementById('custom-meme-name').value === '我的自定义表情包') {
+          document.getElementById('custom-meme-name').value = baseName;
+        }
+      } else {
+        document.getElementById('meme-drop-text').innerText = `✔ 已选择 ${selectedMemeFiles.length} 个文件`;
+      }
+      showToast(`已载入 ${selectedMemeFiles.length} 个表情包文件`, "info");
     }
 
-    // 加载表情包列表
+    // 上传并优化表情包
+    async function uploadAndOptimizeMemePack() {
+      const packId = document.getElementById('custom-meme-id').value.trim();
+      const packName = document.getElementById('custom-meme-name').value.trim();
+
+      if (!packId) { showToast("请输入表情包代号 (Pack ID)！", "warning"); return; }
+      if (!packName) { showToast("请输入表情包显示名称！", "warning"); return; }
+      if (!selectedMemeFiles || selectedMemeFiles.length === 0) {
+        showToast("请先选择 ZIP 压缩包或图片文件！", "warning");
+        return;
+      }
+
+      const btn = document.getElementById('btn-upload-meme');
+      btn.disabled = true;
+      btn.innerHTML = '<span>⚡ 正在导入并执行智能优化（过滤、去重、归档）...</span>';
+
+      const fd = new FormData();
+      fd.append('pack_id', packId);
+      fd.append('pack_name', packName);
+
+      selectedMemeFiles.forEach(file => {
+        fd.append('files', file);
+      });
+
+      try {
+        const res = await fetch('/api/memes/upload', {
+          method: 'POST',
+          body: fd
+        });
+        const out = await res.json();
+        if (out.ok) {
+          showToast(`🎉 表情包【${packName}】导入优化完成！成功保存 ${out.saved_count || 0} 张表情（已过滤重复）并已自动同步至 AstrBot`, "success", 6000);
+          selectedMemeFiles = [];
+          document.getElementById('meme-drop-text').innerText = '点击或将 ZIP 压缩包 / 多张表情图片拖入此处';
+          loadLocalMemePacks();
+          loadMemePacks();
+        } else {
+          showToast("❌ 导入失败: " + out.message, "error", 5000);
+        }
+      } catch (e) {
+        showToast("上传请求异常: " + e.message, "error");
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<span>🚀 立即导入并优化表情包</span>';
+      }
+    }
+
+    // 加载本地自定义表情包列表
+    async function loadLocalMemePacks() {
+      const container = document.getElementById('local-memes-container');
+      try {
+        const res = await fetch('/api/memes/local');
+        const out = await res.json();
+        if (!out.ok || !out.packs || out.packs.length === 0) {
+          container.innerHTML = '<div style="color:var(--text-muted); font-size:13px; grid-column:span 2;">暂无本地自定义表情包，可从上方选择 ZIP 或图片一键导入。</div>';
+          return;
+        }
+
+        container.innerHTML = '';
+        out.packs.forEach(p => {
+          const card = document.createElement('div');
+          card.className = 'item-card';
+
+          let thumbHtml = '';
+          if (p.sample_images && p.sample_images.length > 0) {
+            thumbHtml = '<div class="meme-preview-row">' + 
+              p.sample_images.map(img => `<img class="meme-thumb" src="/api/memes/image?pack_id=${encodeURIComponent(p.id)}&filename=${encodeURIComponent(img)}" alt="${img}">`).join('') +
+              '</div>';
+          }
+
+          card.innerHTML = `
+            <div>
+              <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:4px;">
+                <span class="item-title">📦 ${p.name}</span>
+                <span class="badge ${p.is_synced ? 'badge-success' : 'badge-warning'}">
+                  ${p.is_synced ? '✔ 已同步至 AstrBot' : '待同步'}
+                </span>
+              </div>
+              <div style="font-size:12px; color:var(--text-muted);">
+                代号：<code>${p.id}</code> · 包含 <strong>${p.image_count}</strong> 张图片
+              </div>
+              ${thumbHtml}
+            </div>
+            <div style="display:flex; gap:8px; margin-top:8px; justify-content:flex-end;">
+              <button class="btn btn-sm btn-outline" onclick="deleteLocalMemePack('${p.id}')">
+                <span>🗑️ 删除</span>
+              </button>
+              <button class="btn btn-sm btn-primary" onclick="syncAllMemesToAstrBot()">
+                <span>⚡ 立即同步</span>
+              </button>
+            </div>
+          `;
+          container.appendChild(card);
+        });
+      } catch (e) {
+        container.innerHTML = '<div style="color:var(--text-muted); font-size:13px;">加载本地表情包失败</div>';
+      }
+    }
+
+    // 删除本地表情包
+    async function deleteLocalMemePack(packId) {
+      if (!confirm(`确定要删除表情包【${packId}】吗？此操作将从本地与 AstrBot 中一并移除。`)) {
+        return;
+      }
+      try {
+        const res = await fetch('/api/memes/delete', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({pack_id: packId})
+        });
+        const out = await res.json();
+        if (out.ok) {
+          showToast(`已删除表情包【${packId}】`, "success");
+          loadLocalMemePacks();
+          loadMemePacks();
+        } else {
+          showToast("删除失败: " + out.message, "error");
+        }
+      } catch (e) {
+        showToast("删除异常: " + e.message, "error");
+      }
+    }
+
+    // 一键同步全部本地表情包到 AstrBot
+    async function syncAllMemesToAstrBot() {
+      try {
+        const res = await fetch('/api/memes/sync_all', { method: 'POST' });
+        const out = await res.json();
+        if (out.ok) {
+          showToast(`✅ ${out.message}`, "success", 4000);
+          loadLocalMemePacks();
+          loadMemePacks();
+        } else {
+          showToast("❌ 同步失败: " + out.message, "error");
+        }
+      } catch (e) {
+        showToast("同步异常: " + e.message, "error");
+      }
+    }
+
+    // 加载开源社区表情包列表
     async function loadMemePacks() {
       const container = document.getElementById('meme-packs-container');
       container.innerHTML = '<div style="color:var(--text-muted); font-size:13px;">正在加载表情包开源信息...</div>';
@@ -1098,12 +1531,12 @@
           container.innerHTML = '';
           out.packs.forEach(p => {
             const card = document.createElement('div');
-            card.className = 'meme-card';
+            card.className = 'item-card';
             card.innerHTML = `
               <div>
                 <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:6px;">
-                  <span class="meme-title">${p.name}</span>
-                  <span class="meme-badge">${p.tag}</span>
+                  <span class="item-title">${p.name}</span>
+                  <span class="badge badge-primary">${p.tag}</span>
                 </div>
                 <div style="font-size:13px; color:var(--text-muted); margin-bottom:8px;">${p.description} (${p.count})</div>
                 <div class="url-box" style="margin-bottom:6px;">
@@ -1145,12 +1578,15 @@
         if (out.logs) logEl.innerText += out.logs.join('\n') + '\n';
         if (out.ok) {
           logEl.innerText += "\n🎉 表情包 [" + packId + "] 下载并安装完成！";
+          showToast(`表情包【${packId}】安装完成！`, "success");
           loadMemePacks();
         } else {
           logEl.innerText += "\n❌ 安装失败: " + out.message;
+          showToast("安装失败: " + out.message, "error");
         }
       } catch (e) {
         logEl.innerText += "\n❌ 请求异常: " + e.message;
+        showToast("请求异常: " + e.message, "error");
       }
     }
 
@@ -1164,13 +1600,13 @@
         });
         const out = await res.json();
         if (out.ok) {
-          alert("✔ " + out.message);
+          showToast("✔ " + out.message, "success");
           loadMemePacks();
         } else {
-          alert("❌ 设置失败: " + out.message);
+          showToast("❌ 设置失败: " + out.message, "error");
         }
       } catch (e) {
-        alert("请求异常: " + e.message);
+        showToast("请求异常: " + e.message, "error");
       }
     }
 
@@ -1185,7 +1621,7 @@
       } catch (e) {}
     }
 
-    // 模态弹窗控制
+    // ===== 模态弹窗控制 =====
     function openSystemSettingsModal() {
       document.getElementById('system-modal').style.display = 'flex';
       checkPluginCompleteness();
@@ -1203,10 +1639,10 @@
           body: JSON.stringify({ url })
         });
         const out = await res.json();
-        alert(out.ok ? ("✅ " + out.message) : ("❌ " + out.message));
+        showToast(out.ok ? ("✅ " + out.message) : ("❌ " + out.message), out.ok ? "success" : "error");
         checkStatus();
       } catch (e) {
-        alert("请求异常: " + e.message);
+        showToast("请求异常: " + e.message, "error");
       }
     }
 
@@ -1221,15 +1657,15 @@
         });
         const out = await res.json();
         if (out.ok) {
-          alert("✅ 登录成功！已连接到 AstrBot。");
+          showToast("✅ 登录成功！已连接到 AstrBot。", "success");
           checkStatus();
           checkPluginCompleteness();
           closeSystemSettingsModal();
         } else {
-          alert("❌ " + out.message);
+          showToast("❌ " + out.message, "error");
         }
       } catch (e) {
-        alert("请求异常: " + e.message);
+        showToast("请求异常: " + e.message, "error");
       }
     }
 
@@ -1237,10 +1673,10 @@
       try {
         const res = await fetch('/api/napcat/sync', { method: 'POST' });
         const out = await res.json();
-        alert(out.ok ? ("✅ " + out.message) : ("❌ 对齐失败: " + out.message));
+        showToast(out.ok ? ("✅ " + out.message) : ("❌ 对齐失败: " + out.message), out.ok ? "success" : "error");
         checkStatus();
       } catch (e) {
-        alert("请求异常: " + e.message);
+        showToast("请求异常: " + e.message, "error");
       }
     }
 
@@ -1252,18 +1688,18 @@
           body: JSON.stringify({ force: true })
         });
         const out = await res.json();
-        alert(out.ok ? "✅ 插件底座重新配置完成！" : ("⚠️ " + out.message));
+        showToast(out.ok ? "✅ 插件底座重新配置完成！" : ("⚠️ " + out.message), out.ok ? "success" : "warning");
         checkPluginCompleteness();
       } catch (e) {
-        alert("请求异常: " + e.message);
+        showToast("请求异常: " + e.message, "error");
       }
     }
 
-    // 启动初始化
+    // ===== 启动初始化 =====
     window.addEventListener('DOMContentLoaded', () => {
       checkStatus();
       checkPluginCompleteness();
-      loadReferencePersona();
+      loadActivePersona();
       checkVoiceEnv();
     });
   </script>

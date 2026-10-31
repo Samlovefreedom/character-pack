@@ -19,6 +19,7 @@ import urllib.parse
 import urllib.request
 import uuid
 import wave
+import zipfile
 
 PACK_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 GH_ACCELERATORS = ["https://gh.dpik.top/", "https://hk.gh-proxy.com/", "https://ghfast.top/", "https://gh-proxy.com/", ""]
@@ -721,22 +722,420 @@ class BreezeClient:
             "model": "tts-1",
             "voice": voice_name,
             "input": text,
-            "response_format": "pcm"
+            "response_format": "wav"
         }).encode("utf-8")
         req = urllib.request.Request(url, data=payload, method="POST")
         req.add_header("Content-Type", "application/json")
         try:
             with urllib.request.urlopen(req, timeout=120) as r:
-                pcm = r.read()
-            # 转为 wav 格式以便浏览器播放
+                data = r.read()
+            # 如果本身就是 WAV 格式 (以 RIFF 开头)，直接返回
+            if data[:4] == b"RIFF":
+                return True, data
+            # 否则视作 PCM 补充 WAV 头
             buf = io.BytesIO()
             with wave.open(buf, "wb") as w:
                 w.setnchannels(1)
                 w.setsampwidth(2)
                 w.setframerate(24000)
-                w.writeframes(pcm)
+                w.writeframes(data)
             return True, buf.getvalue()
         except urllib.error.HTTPError as e:
             return False, e.read().decode("utf-8", "replace")
         except Exception as e:
             return False, str(e)
+
+
+def get_active_persona_info():
+    """获取 AstrBot 当前生效的性格名称、提示词以及绑定的主人 QQ。保证不会每次都重置到初始模版。"""
+    instances = detect_astrbot_instances()
+    if not instances:
+        return {"persona_id": "大肥鱼", "prompt": "", "owner_qq": "", "is_custom": False}
+
+    inst_dir = instances[0]["dir"]
+    db_path = None
+    cfg_path = None
+    for sub in [os.path.join(inst_dir, "core", "data"), os.path.join(inst_dir, "data")]:
+        db_cand = os.path.join(sub, "data_v4.db")
+        cfg_cand = os.path.join(sub, "cmd_config.json")
+        if os.path.exists(db_cand): db_path = db_cand
+        if os.path.exists(cfg_cand): cfg_path = cfg_cand
+
+    active_id = "大肥鱼"
+    owner_qq = ""
+    if cfg_path and os.path.exists(cfg_path):
+        try:
+            cfg = json.load(open(cfg_path, encoding="utf-8-sig"))
+            active_id = cfg.get("agent_runner", {}).get("config", {}).get("persona", {}).get("persona_id") or "大肥鱼"
+            admins = cfg.get("admins_id", [])
+            wl = cfg.get("platform_settings", {}).get("id_whitelist", [])
+            if admins:
+                owner_qq = str(admins[0])
+            elif wl:
+                m = re.search(r"\d{5,12}", str(wl[0]))
+                if m: owner_qq = m.group(0)
+        except Exception:
+            pass
+
+    prompt = ""
+    if db_path and os.path.exists(db_path):
+        try:
+            import sqlite3
+            conn = sqlite3.connect(db_path, timeout=5.0)
+            cur = conn.cursor()
+            cur.execute("SELECT system_prompt FROM personas WHERE persona_id = ?", (active_id,))
+            row = cur.fetchone()
+            if row and row[0]:
+                prompt = row[0]
+            conn.close()
+        except Exception:
+            pass
+
+    # 若数据库尚未存入该性格，回退至大肥鱼参考范式
+    if not prompt:
+        ref_file = os.path.join(PACK_ROOT, "persona", "大肥鱼.md")
+        if os.path.exists(ref_file):
+            with open(ref_file, "r", encoding="utf-8") as f:
+                prompt = f.read()
+
+    return {
+        "persona_id": active_id,
+        "prompt": prompt,
+        "owner_qq": owner_qq,
+        "is_custom": bool(prompt and active_id != "大肥鱼")
+    }
+
+
+def get_active_voice_info():
+    """获取 AstrBot 当前生效的 TTS 语音设置与音色名称"""
+    instances = detect_astrbot_instances()
+    if not instances:
+        return {"enabled": False, "voice_name": "dafeiyu", "provider_id": ""}
+    
+    inst_dir = instances[0]["dir"]
+    cfg_path = None
+    for sub in [os.path.join(inst_dir, "core", "data"), os.path.join(inst_dir, "data")]:
+        cfg_cand = os.path.join(sub, "cmd_config.json")
+        if os.path.exists(cfg_cand):
+            cfg_path = cfg_cand
+            break
+
+    if not cfg_path or not os.path.exists(cfg_path):
+        return {"enabled": False, "voice_name": "dafeiyu", "provider_id": ""}
+
+    try:
+        cfg = json.load(open(cfg_path, encoding="utf-8-sig"))
+        tts_settings = cfg.get("provider_tts_settings", {})
+        enabled = bool(tts_settings.get("enable", False))
+        active_provider_id = tts_settings.get("provider_id", "")
+        
+        voice_name = ""
+        for pr in cfg.get("provider", []):
+            if pr.get("id") == active_provider_id or pr.get("provider_type") == "text_to_speech":
+                v = pr.get("openai-tts-voice") or pr.get("voice") or ""
+                if v:
+                    voice_name = v
+                    break
+
+        if not voice_name:
+            voice_name = "dafeiyu"
+
+        return {
+            "enabled": enabled,
+            "voice_name": voice_name,
+            "provider_id": active_provider_id
+        }
+    except Exception:
+        return {"enabled": False, "voice_name": "dafeiyu", "provider_id": ""}
+
+
+def get_meme_manager_data_dir():
+    """定位 AstrBot 中 meme_manager 插件的数据目录"""
+    instances = detect_astrbot_instances()
+    if not instances:
+        return ""
+    inst_dir = instances[0]["dir"]
+    candidates = [
+        os.path.join(inst_dir, "core", "data", "plugin_data", "meme_manager"),
+        os.path.join(inst_dir, "data", "plugin_data", "meme_manager"),
+    ]
+    for c in candidates:
+        if os.path.exists(c):
+            return c
+    return candidates[0]
+
+
+def list_local_meme_packs():
+    """扫描项目根目录下 memes/ 存放的自定义表情包，并标记其在 AstrBot 中的同步状态"""
+    memes_root = os.path.join(PACK_ROOT, "memes")
+    if not os.path.exists(memes_root):
+        os.makedirs(memes_root, exist_ok=True)
+        return []
+
+    # 读取 AstrBot registry.json 中已安装的表情包列表
+    astr_registered = set()
+    data_dir = get_meme_manager_data_dir()
+    if data_dir:
+        reg_file = os.path.join(data_dir, "registry.json")
+        if os.path.exists(reg_file):
+            try:
+                reg_data = json.load(open(reg_file, encoding="utf-8"))
+                for p in reg_data.get("installed_packs", []):
+                    if isinstance(p, dict) and p.get("id"):
+                        astr_registered.add(p["id"])
+            except Exception:
+                pass
+
+    packs = []
+    valid_exts = {".jpg", ".jpeg", ".png", ".gif", ".webp"}
+    for item in os.listdir(memes_root):
+        item_path = os.path.join(memes_root, item)
+        if not os.path.isdir(item_path):
+            continue
+
+        pack_id = item
+        manifest_file = os.path.join(item_path, "manifest.json")
+        name = pack_id
+        description = "本地自定义导入表情包"
+        if os.path.exists(manifest_file):
+            try:
+                mani = json.load(open(manifest_file, encoding="utf-8"))
+                name = mani.get("name") or name
+                description = mani.get("description") or description
+            except Exception:
+                pass
+
+        # 扫描图片文件（支持根目录或 memes/ 子目录）
+        images_dir = os.path.join(item_path, "memes")
+        scan_dir = images_dir if os.path.exists(images_dir) else item_path
+        all_imgs = []
+        for root, _, files in os.walk(scan_dir):
+            for f in sorted(files):
+                ext = os.path.splitext(f)[1].lower()
+                if ext in valid_exts and not f.startswith("."):
+                    rel = os.path.relpath(os.path.join(root, f), item_path).replace("\\", "/")
+                    all_imgs.append(rel)
+
+        # 检查是否已同步至 AstrBot 实例
+        is_synced = False
+        if data_dir:
+            astr_pack_dir = os.path.join(data_dir, "packs", pack_id)
+            is_synced = (pack_id in astr_registered) or os.path.exists(astr_pack_dir)
+
+        packs.append({
+            "id": pack_id,
+            "name": name,
+            "description": description,
+            "count": len(all_imgs),
+            "preview_samples": all_imgs[:6],
+            "is_synced": is_synced,
+            "local_path": item_path
+        })
+
+    return packs
+
+
+def import_and_optimize_meme_pack(pack_id, pack_name, files_map=None, zip_bytes=None):
+    """
+    导入并优化表情包：
+    1. 过滤垃圾文件与非图片格式
+    2. MD5 智能去重
+    3. 规范化落盘到项目 memes/<pack_id>/
+    4. 自动生成标准 manifest.json
+    5. 自动同步到 AstrBot 的 plugin_data/meme_manager/packs/<pack_id>/ 并注册启用
+    """
+    safe_id = re.sub(r"[^\w\-_]", "", pack_id.strip()) or f"pack_{uuid.uuid4().hex[:8]}"
+    clean_name = pack_name.strip() or safe_id
+
+    memes_root = os.path.join(PACK_ROOT, "memes")
+    target_dir = os.path.join(memes_root, safe_id)
+    target_memes_dir = os.path.join(target_dir, "memes")
+    os.makedirs(target_memes_dir, exist_ok=True)
+
+    valid_exts = {".jpg", ".jpeg", ".png", ".gif", ".webp"}
+    raw_images = []
+
+    # 1. 如果上传了 ZIP 压缩包，解压提取
+    if zip_bytes:
+        try:
+            with zipfile.ZipFile(io.BytesIO(zip_bytes)) as z:
+                for zinfo in z.infolist():
+                    if zinfo.is_dir() or zinfo.filename.startswith("__MACOSX") or "/." in zinfo.filename:
+                        continue
+                    ext = os.path.splitext(zinfo.filename)[1].lower()
+                    if ext in valid_exts:
+                        data = z.read(zinfo)
+                        base_fname = os.path.basename(zinfo.filename)
+                        raw_images.append((base_fname, data))
+        except Exception as e:
+            return False, f"解析表情包 ZIP 压缩包失败: {e}"
+
+    # 2. 如果上传了单独的图片文件字典 {filename: bytes}
+    if files_map:
+        for fname, data in files_map.items():
+            ext = os.path.splitext(fname)[1].lower()
+            if ext in valid_exts and not fname.startswith("."):
+                raw_images.append((os.path.basename(fname), data))
+
+    if not raw_images:
+        return False, "未发现有效的表情图片文件（支持 .jpg, .png, .gif, .webp）"
+
+    # 3. MD5 智能去重与规范重命名
+    seen_hashes = set()
+    saved_count = 0
+    dup_count = 0
+    saved_files = []
+
+    for orig_name, data in raw_images:
+        if len(data) == 0:
+            continue
+        h = hashlib.md5(data).hexdigest()
+        if h in seen_hashes:
+            dup_count += 1
+            continue
+        seen_hashes.add(h)
+
+        ext = os.path.splitext(orig_name)[1].lower()
+        clean_basename = re.sub(r"[^\w\-_.]", "_", orig_name)
+        if not clean_basename or clean_basename == ext:
+            clean_basename = f"meme_{saved_count + 1:03d}{ext}"
+
+        save_path = os.path.join(target_memes_dir, clean_basename)
+        with open(save_path, "wb") as f:
+            f.write(data)
+        saved_files.append(f"memes/{clean_basename}")
+        saved_count += 1
+
+    if saved_count == 0:
+        return False, "去重后没有可保存的有效表情图片"
+
+    # 4. 生成标准 manifest.json
+    manifest = {
+        "schema_version": 1,
+        "id": safe_id,
+        "name": clean_name,
+        "version": "1.0.0",
+        "description": f"收录 {saved_count} 个表情，已完成 MD5 去重与自动化优化。",
+        "author": "用户导入",
+        "tags": ["custom", "imported"],
+        "icon": saved_files[0] if saved_files else "",
+        "previews": saved_files[:4],
+        "total_count": saved_count
+    }
+    with open(os.path.join(target_dir, "manifest.json"), "w", encoding="utf-8") as f:
+        json.dump(manifest, f, ensure_ascii=False, indent=2)
+
+    # 5. 同步写入 AstrBot 实例
+    sync_ok, sync_msg = sync_single_pack_to_astrbot(safe_id, clean_name, target_dir)
+
+    msg = f"成功导入表情包「{clean_name}」！共收录 {saved_count} 张表情（已智能去重剔除 {dup_count} 张重复图片）。"
+    if sync_ok:
+        msg += " 已直接同步并注册至 AstrBot！"
+    else:
+        msg += f" (提示: 暂未同步到 AstrBot: {sync_msg})"
+
+    return True, {
+        "pack_id": safe_id,
+        "name": clean_name,
+        "count": saved_count,
+        "duplicates_removed": dup_count,
+        "message": msg
+    }
+
+
+def sync_single_pack_to_astrbot(pack_id, pack_name, source_pack_dir):
+    """将指定的表情包目录同步到 AstrBot 的 plugin_data/meme_manager/packs 并更新 registry.json"""
+    data_dir = get_meme_manager_data_dir()
+    if not data_dir:
+        return False, "未找到 AstrBot 实例目录"
+
+    os.makedirs(data_dir, exist_ok=True)
+    astr_packs_dir = os.path.join(data_dir, "packs")
+    os.makedirs(astr_packs_dir, exist_ok=True)
+
+    dest_dir = os.path.join(astr_packs_dir, pack_id)
+    if os.path.exists(dest_dir):
+        shutil.rmtree(dest_dir, ignore_errors=True)
+    shutil.copytree(source_pack_dir, dest_dir)
+
+    reg_file = os.path.join(data_dir, "registry.json")
+    registry = {"schema_version": 1, "installed_packs": []}
+    if os.path.exists(reg_file):
+        try:
+            registry = json.load(open(reg_file, encoding="utf-8"))
+        except Exception:
+            registry = {"schema_version": 1, "installed_packs": []}
+
+    installed = registry.setdefault("installed_packs", [])
+    found = False
+    for p in installed:
+        if isinstance(p, dict) and p.get("id") == pack_id:
+            p["name"] = pack_name
+            p["enabled"] = True
+            found = True
+            break
+    if not found:
+        from datetime import datetime, timezone
+        installed.append({
+            "id": pack_id,
+            "name": pack_name,
+            "version": "1.0.0",
+            "enabled": True,
+            "installed_at": datetime.now(timezone.utc).isoformat()
+        })
+
+    with open(reg_file, "w", encoding="utf-8") as f:
+        json.dump(registry, f, ensure_ascii=False, indent=2)
+
+    return True, "同步成功"
+
+
+def sync_all_local_memes_to_astrbot():
+    """一键将项目 memes/ 下所有表情包全部同步到 AstrBot"""
+    memes_root = os.path.join(PACK_ROOT, "memes")
+    if not os.path.exists(memes_root):
+        return True, "项目表情包目录为空"
+
+    synced_count = 0
+    for item in os.listdir(memes_root):
+        item_path = os.path.join(memes_root, item)
+        if os.path.isdir(item_path):
+            name = item
+            mf = os.path.join(item_path, "manifest.json")
+            if os.path.exists(mf):
+                try:
+                    name = json.load(open(mf, encoding="utf-8")).get("name") or name
+                except Exception:
+                    pass
+            sync_single_pack_to_astrbot(item, name, item_path)
+            synced_count += 1
+
+    return True, f"已成功将 {synced_count} 个本地表情包同步至 AstrBot！"
+
+
+def delete_local_meme_pack(pack_id):
+    """删除本地表情包，并同步从 AstrBot 中解绑/删除"""
+    memes_root = os.path.join(PACK_ROOT, "memes")
+    target_dir = os.path.join(memes_root, pack_id)
+    if os.path.exists(target_dir):
+        shutil.rmtree(target_dir, ignore_errors=True)
+
+    data_dir = get_meme_manager_data_dir()
+    if data_dir:
+        astr_pack_dir = os.path.join(data_dir, "packs", pack_id)
+        if os.path.exists(astr_pack_dir):
+            shutil.rmtree(astr_pack_dir, ignore_errors=True)
+        reg_file = os.path.join(data_dir, "registry.json")
+        if os.path.exists(reg_file):
+            try:
+                reg_data = json.load(open(reg_file, encoding="utf-8"))
+                reg_data["installed_packs"] = [
+                    p for p in reg_data.get("installed_packs", [])
+                    if isinstance(p, dict) and p.get("id") != pack_id
+                ]
+                with open(reg_file, "w", encoding="utf-8") as f:
+                    json.dump(reg_data, f, ensure_ascii=False, indent=2)
+            except Exception:
+                pass
+
+    return True, f"表情包 [{pack_id}] 已删除"
