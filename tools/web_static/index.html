@@ -611,6 +611,16 @@
         <div><strong>📌 提示：</strong> AstrBot 与 NapCat 请在电脑上手动启动。配置中心将自动接入。</div>
       </div>
 
+      <div class="card" style="padding:14px; margin-bottom:14px; background:#f8fafc;">
+        <div style="font-weight:600; font-size:13px; margin-bottom:6px;">🌐 AstrBot 实例与后台</div>
+        <div style="font-size:12px; color:var(--text-muted); margin-bottom:8px;" id="modal-astrbot-desc">检测中...</div>
+        <div style="display:flex; gap:8px; align-items:center;">
+          <input type="text" id="modal-astrbot-url" class="input-control" placeholder="http://127.0.0.1:16979" style="font-size:12px; font-family:monospace;">
+          <button class="btn btn-sm btn-outline" onclick="modalChangeAstrBotUrl()">切换/刷新</button>
+          <a id="modal-astrbot-link" href="#" target="_blank" class="btn btn-sm btn-outline" style="text-decoration:none; white-space:nowrap;">打开后台 ↗</a>
+        </div>
+      </div>
+
       <div class="form-group">
         <label class="form-label">AstrBot 后台管理密码</label>
         <div style="display:flex; gap:8px;">
@@ -662,12 +672,24 @@
         
         // AstrBot 状态
         const chipA = document.getElementById('chip-astrbot');
+        const modalAStr = document.getElementById('modal-astrbot-desc');
+        const modalAUrl = document.getElementById('modal-astrbot-url');
+        const modalALink = document.getElementById('modal-astrbot-link');
         if (data.astrbot_online) {
+          const portStr = data.astrbot_url ? data.astrbot_url.replace(/https?:\/\/[^:]+:/, ':') : '';
           chipA.className = 'status-pill online';
-          chipA.innerHTML = '<span class="dot"></span> AstrBot: 已连接';
+          chipA.innerHTML = '<span class="dot"></span> AstrBot: 已连接 ' + (portStr ? `<span style="font-size:11px;opacity:0.85;">(${portStr})</span>` : '');
+          if (modalAStr) modalAStr.innerHTML = '✔ 运行中，后台地址：<strong style="color:var(--success);">' + (data.astrbot_url || '') + '</strong>';
+          if (modalAUrl && !modalAUrl.value) modalAUrl.value = data.astrbot_url || '';
+          if (modalALink) {
+            modalALink.href = data.astrbot_url || '#';
+            modalALink.style.display = 'inline-flex';
+          }
         } else {
           chipA.className = 'status-pill offline';
           chipA.innerHTML = '<span class="dot"></span> AstrBot: 未启动';
+          if (modalAStr) modalAStr.innerHTML = '❌ 未检测到 AstrBot 运行（请先在电脑上手动启动 AstrBot 实例）';
+          if (modalALink) modalALink.style.display = 'none';
         }
 
         // NapCat QQ 状态
@@ -1170,6 +1192,22 @@
     }
     function closeSystemSettingsModal() {
       document.getElementById('system-modal').style.display = 'none';
+    }
+
+    async function modalChangeAstrBotUrl() {
+      const url = document.getElementById('modal-astrbot-url').value.trim();
+      try {
+        const res = await fetch('/api/astrbot/set_url', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({ url })
+        });
+        const out = await res.json();
+        alert(out.ok ? ("✅ " + out.message) : ("❌ " + out.message));
+        checkStatus();
+      } catch (e) {
+        alert("请求异常: " + e.message);
+      }
     }
 
     async function modalLoginAstrBot() {

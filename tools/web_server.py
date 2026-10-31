@@ -325,18 +325,24 @@ class ConfigRequestHandler(BaseHTTPRequestHandler):
         if path == "/api/login":
             length = int(self.headers.get("Content-Length", 0))
             body = json.loads(self.rfile.read(length).decode("utf-8")) if length else {}
-            base_url = body.get("base_url", "http://127.0.0.1:6185").rstrip("/")
+            base_url = (body.get("base_url") or STATE.get("astrbot_url") or "http://127.0.0.1:6185").rstrip("/")
             username = body.get("username", "astrbot")
             password = body.get("password", "")
             owner_qq = body.get("owner_qq", "")
 
             # 先快速探测 AstrBot 是否已经启动
             if not test_astrbot_url(base_url):
-                self.send_json({
-                    "ok": False,
-                    "message": f"无法连接到 AstrBot 服务 ({base_url})。请确认已先在电脑上手动启动 AstrBot，并且后台端口正确。"
-                }, 400)
-                return
+                # 重新动态探测一次看是否动态分配了新端口
+                active_url = scan_active_astrbot_url()
+                if test_astrbot_url(active_url):
+                    base_url = active_url
+                    STATE["astrbot_url"] = active_url
+                else:
+                    self.send_json({
+                        "ok": False,
+                        "message": f"无法连接到 AstrBot 服务 ({base_url})。请确认已在电脑上手动启动 AstrBot 实例。"
+                    }, 400)
+                    return
 
             client = AstrBotClient(base_url)
             ok, msg = client.login(username, password)
@@ -347,6 +353,19 @@ class ConfigRequestHandler(BaseHTTPRequestHandler):
                 self.send_json({"ok": True, "message": "登录成功"})
             else:
                 self.send_json({"ok": False, "message": msg}, 400)
+            return
+
+        if path == "/api/astrbot/set_url":
+            body = self.read_json()
+            new_url = (body.get("url") or "").strip().rstrip("/")
+            if not new_url:
+                self.send_json({"ok": False, "message": "地址不能为空"}, 400)
+                return
+            if not test_astrbot_url(new_url):
+                self.send_json({"ok": False, "message": f"连接失败：无法访问 {new_url}，请确认 AstrBot 已启动且端口正确"}, 400)
+                return
+            STATE["astrbot_url"] = new_url
+            self.send_json({"ok": True, "message": f"已成功切换 AstrBot 地址为 {new_url}", "url": new_url})
             return
 
         # 2. 部署基础底座插件（已就绪则跳过，未配置则一键补齐）

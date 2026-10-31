@@ -296,34 +296,38 @@ def sync_napcat_and_astrbot(client, nap_info=None):
 
 
 def scan_active_astrbot_url():
-    """精确快速扫描当前活跃的 AstrBot 端口。"""
-    ports = set()
+    """精确快速扫描当前活跃的 AstrBot 端口。自动适应 AstrBot 启动器动态分配的任意端口。"""
+    candidate_ports = []
+    
     # 1. 尝试从启动器实例配置端口
     instances = detect_astrbot_instances()
     for inst in instances:
-        if inst.get("port"): ports.add(inst["port"])
+        if inst.get("port") and inst["port"] not in candidate_ports:
+            candidate_ports.append(inst["port"])
 
-    # 2. 常用端口段 (包含 AstrBot 启动器分配的 17600+ 以及默认 6185+)
-    for p in [17615, 6185, 17614, 17616, 6186, 6187]:
-        ports.add(p)
+    # 2. 常用端口与默认端口
+    for p in [16979, 17615, 6185, 17614, 17616, 6186, 6187]:
+        if p not in candidate_ports:
+            candidate_ports.append(p)
 
-    # 3. 扫描本机所有 python 进程监听的端口
+    # 3. 扫描本机所有正在监听的 TCP 端口 (AstrBot 启动器会动态分配 10000-65535 的端口)
     try:
         if os.name == "nt":
             out = subprocess.run(["netstat", "-ano", "-n", "-p", "TCP"], capture_output=True, text=True, timeout=1.5, errors="replace").stdout
             for line in out.splitlines():
                 parts = line.split()
-                if len(parts) >= 5 and parts[0].upper() == "TCP" and parts[3].upper() == "LISTENING":
+                if len(parts) >= 4 and parts[0].upper() == "TCP" and parts[3].upper() == "LISTENING":
                     host, _, port = parts[1].rpartition(":")
                     if host in ("127.0.0.1", "0.0.0.0") and port.isdigit():
                         p_int = int(port)
-                        if (17600 <= p_int <= 17650) or (6185 <= p_int <= 6200):
-                            ports.add(p_int)
+                        # 排除非 AstrBot 服务的常见端口
+                        if p_int not in (18989, 8137, 6099, 3306, 135, 445, 53, 80, 443) and p_int not in candidate_ports:
+                            candidate_ports.append(p_int)
     except Exception:
         pass
 
     # 验证哪个端口是真正的 AstrBot Dashboard
-    for p in sorted(ports):
+    for p in candidate_ports:
         url = f"http://127.0.0.1:{p}"
         if test_astrbot_url(url):
             return url
