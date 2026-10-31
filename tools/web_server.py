@@ -57,6 +57,7 @@ from web_adapter import (
     import_and_optimize_meme_pack,
     sync_all_local_memes_to_astrbot,
     delete_local_meme_pack,
+    download_and_import_github_meme,
 )
 
 PORT = 18989
@@ -826,6 +827,26 @@ class ConfigRequestHandler(BaseHTTPRequestHandler):
                 return
             ok, msg = delete_local_meme_pack(pack_id)
             self.send_json({"ok": ok, "message": msg})
+            return
+
+        # 6.04 从 GitHub 导入表情包
+        if path == "/api/memes/import_github":
+            length = int(self.headers.get("Content-Length", 0))
+            body = json.loads(self.rfile.read(length).decode("utf-8")) if length else {}
+            repo_url = (body.get("url") or body.get("repo_url") or "").strip()
+            pack_id = (body.get("pack_id") or "").strip()
+            pack_name = (body.get("pack_name") or "").strip()
+
+            if not repo_url:
+                self.send_json({"ok": False, "message": "GitHub 仓库地址不能为空"}, 400)
+                return
+
+            ok, res = download_and_import_github_meme(repo_url, pack_id, pack_name)
+            if ok:
+                msg = res.get("message") if isinstance(res, dict) else str(res)
+                self.send_json({"ok": True, "data": res, "message": msg})
+            else:
+                self.send_json({"ok": False, "message": str(res)}, 500)
             return
 
         # 6.1 开启/关闭语音克隆模块

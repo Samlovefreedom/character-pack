@@ -691,13 +691,13 @@
     <!-- 板块 3: 表情包开源与导入管理 -->
     <section id="tab-memes" class="tab-panel">
 
-      <!-- 模块 A: 自定义表情包库 (本地导入与优化) -->
+      <!-- 自定义表情包管理 (本地导入与 GitHub 导入) -->
       <div class="card" style="border-left: 4px solid var(--primary);">
         <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px;">
           <div>
-            <div class="card-title">📁 自定义表情包管理 (导入并优化)</div>
+            <div class="card-title">📁 表情包管理 (本地导入 / GitHub 导入)</div>
             <div class="card-desc" style="margin-bottom: 0;">
-              支持将您自己的表情包（ZIP 压缩包或单张/多张图片）导入项目。系统将<strong>自动优化</strong>：过滤垃圾非图片文件、MD5 秒级去重、生成 <code>manifest.json</code> 描述清单，并自动同步注册至 AstrBot！
+              支持从<strong>本地文件</strong>（ZIP 或多张图片）或<strong>从 GitHub 仓库</strong>直接导入表情包。系统将<strong>全自动优化</strong>：过滤垃圾非图片文件、MD5 秒级去重、生成标准清单并自动同步注册至 AstrBot！
             </div>
           </div>
           <button class="btn btn-sm btn-outline" onclick="syncAllMemesToAstrBot()">
@@ -706,6 +706,16 @@
         </div>
 
         <div style="background: #f8fafc; border: 1px solid var(--border); border-radius: var(--radius); padding: 18px; margin: 16px 0;">
+          <!-- 导入方式切换按钮 -->
+          <div style="display: flex; gap: 10px; margin-bottom: 16px; border-bottom: 1px solid var(--border); padding-bottom: 12px;">
+            <button type="button" class="btn btn-sm btn-primary" id="btn-tab-local-import" onclick="switchMemeImportTab('local')">
+              <span>📁 方式一：本地文件导入 (ZIP / 图片)</span>
+            </button>
+            <button type="button" class="btn btn-sm btn-outline" id="btn-tab-github-import" onclick="switchMemeImportTab('github')">
+              <span>🌐 方式二：从 GitHub 仓库导入</span>
+            </button>
+          </div>
+
           <div class="grid-2">
             <div class="form-group" style="margin-bottom: 0;">
               <label class="form-label">表情包代号 (Pack ID)</label>
@@ -719,62 +729,55 @@
             </div>
           </div>
 
-          <div class="form-group" style="margin-top: 14px; margin-bottom: 0;">
-            <label class="form-label">选择表情包文件 (支持 .zip 压缩包或多张图片：PNG, JPG, GIF, WEBP)</label>
-            <div class="drop-zone" id="meme-drop-zone" onclick="document.getElementById('meme-file-input').click()">
-              <input type="file" id="meme-file-input" multiple accept=".zip,image/png,image/jpeg,image/gif,image/webp" style="display: none;" onchange="handleMemeFileSelect(this.files)">
-              <div style="font-size: 28px; margin-bottom: 6px;">🖼️</div>
-              <div style="font-weight: 600;" id="meme-drop-text">点击或将 ZIP 压缩包 / 多张表情图片拖入此处</div>
-              <div class="form-hint">系统将自动过滤非图片文件、进行 MD5 查重并规范化归档</div>
+          <!-- 方式 1: 本地文件上传面板 -->
+          <div id="panel-local-import">
+            <div class="form-group" style="margin-top: 14px; margin-bottom: 0;">
+              <label class="form-label">选择表情包文件 (支持 .zip 压缩包或多张图片：PNG, JPG, GIF, WEBP)</label>
+              <div class="drop-zone" id="meme-drop-zone" onclick="document.getElementById('meme-file-input').click()">
+                <input type="file" id="meme-file-input" multiple accept=".zip,image/png,image/jpeg,image/gif,image/webp" style="display: none;" onchange="handleMemeFileSelect(this.files)">
+                <div style="font-size: 28px; margin-bottom: 6px;">🖼️</div>
+                <div style="font-weight: 600;" id="meme-drop-text">点击或将 ZIP 压缩包 / 多张表情图片拖入此处</div>
+                <div class="form-hint">系统将自动过滤非图片文件、进行 MD5 查重并规范化归档</div>
+              </div>
+            </div>
+
+            <div style="margin-top: 14px; display: flex; justify-content: flex-end;">
+              <button class="btn btn-primary" id="btn-upload-meme" onclick="uploadAndOptimizeMemePack()">
+                <span>🚀 立即导入并优化表情包</span>
+              </button>
             </div>
           </div>
 
-          <div style="margin-top: 14px; display: flex; justify-content: flex-end;">
-            <button class="btn btn-primary" id="btn-upload-meme" onclick="uploadAndOptimizeMemePack()">
-              <span>🚀 立即导入并优化表情包</span>
-            </button>
-          </div>
-        </div>
+          <!-- 方式 2: 从 GitHub 仓库导入面板 -->
+          <div id="panel-github-import" style="display: none;">
+            <div class="form-group" style="margin-top: 14px; margin-bottom: 0;">
+              <label class="form-label">GitHub 仓库地址或 ZIP 下载链接</label>
+              <input type="text" id="github-meme-url" class="input-control" placeholder="输入 GitHub 地址，例如: https://github.com/anka-afk/blue-fat-fish-meme-pack" oninput="onGitHubUrlInput(this.value)">
+              <div class="form-hint">💡 支持完整 GitHub 仓库主页地址或 Release ZIP 下载链接。系统将自动经高速镜像节点拉取、解压并执行 MD5 去重归档！</div>
+            </div>
 
-        <!-- 本地自定义表情包列表 -->
-        <div style="margin-top: 20px;">
-          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
-            <h4 style="font-size:14px; font-weight:700;">📂 本地表情包库 (character-pack/memes)</h4>
-            <button class="btn btn-sm btn-outline" onclick="loadLocalMemePacks()">🔄 刷新列表</button>
-          </div>
-          <div id="local-memes-container" class="grid-2">
-            <div style="color:var(--text-muted); font-size:13px;">正在加载本地表情包...</div>
-          </div>
-        </div>
-      </div>
-
-      <!-- 模块 B: 社区开源表情包库 -->
-      <div class="card">
-        <div class="card-title">🌐 社区开源表情包库 (AstrBot 官方源)</div>
-        <div class="card-desc">
-          公开社区开源表情包库与本地落盘路径。您可以单独下载安装任一套，或设为主力套。
-        </div>
-
-        <div class="alert-banner alert-info">
-          <div style="width: 100%;">
-            <strong>📍 开源与落盘透明信息：</strong><br>
-            • 社区索引总仓库：<a href="https://github.com/anka-afk/astrbot-meme-pack-index" target="_blank">https://github.com/anka-afk/astrbot-meme-pack-index</a><br>
-            • 本地实际落盘目录：<code id="meme-local-path">C:\Users\...\data\plugins\astrbot_plugin_meme_manager\packs\</code>
-            <div style="margin-top: 8px;">
-              <button class="btn btn-sm btn-outline" onclick="openLocalFolder('memes')">
-                <span>📁 在 Windows 资源管理器中打开此文件夹</span>
+            <div style="margin-top: 14px; display: flex; justify-content: flex-end;">
+              <button class="btn btn-primary" id="btn-github-meme" onclick="importMemeFromGitHub()">
+                <span>🚀 从 GitHub 拉取并优化导入</span>
               </button>
             </div>
           </div>
         </div>
 
-        <div class="grid-2" id="meme-packs-container">
-          <!-- 动态加载社区表情包卡片 -->
-        </div>
-
+        <!-- 本地表情包列表 -->
         <div style="margin-top: 20px;">
-          <label class="form-label">表情包操作日志：</label>
-          <div class="log-box" id="meme-log" style="background:#1e1e24; color:#a7f3d0; font-family:monospace; font-size:12px; padding:12px; border-radius:8px; height:100px; overflow-y:auto;">点击上方卡片上的单独操作按钮查看进度...</div>
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+            <h4 style="font-size:14px; font-weight:700;">📂 已安装的表情包库 (character-pack/memes)</h4>
+            <div style="display:flex; gap:8px;">
+              <button class="btn btn-sm btn-outline" onclick="openLocalFolder('memes')">
+                <span>📁 打开文件夹</span>
+              </button>
+              <button class="btn btn-sm btn-outline" onclick="loadLocalMemePacks()">🔄 刷新列表</button>
+            </div>
+          </div>
+          <div id="local-memes-container" class="grid-2">
+            <div style="color:var(--text-muted); font-size:13px;">正在加载本地表情包...</div>
+          </div>
         </div>
       </div>
 
@@ -871,7 +874,6 @@
       if (tabId === 'tab-voice') checkVoiceEnv();
       if (tabId === 'tab-memes') {
         loadLocalMemePacks();
-        loadMemePacks();
       }
     }
 
@@ -1434,7 +1436,6 @@
           selectedMemeFiles = [];
           document.getElementById('meme-drop-text').innerText = '点击或将 ZIP 压缩包 / 多张表情图片拖入此处';
           loadLocalMemePacks();
-          loadMemePacks();
         } else {
           showToast("❌ 导入失败: " + out.message, "error", 5000);
         }
@@ -1446,6 +1447,81 @@
       }
     }
 
+    // 切换表情包导入方式 (本地文件 / GitHub 导入)
+    function switchMemeImportTab(tab) {
+      const btnLocal = document.getElementById('btn-tab-local-import');
+      const btnGithub = document.getElementById('btn-tab-github-import');
+      const panelLocal = document.getElementById('panel-local-import');
+      const panelGithub = document.getElementById('panel-github-import');
+
+      if (tab === 'local') {
+        btnLocal.className = 'btn btn-sm btn-primary';
+        btnGithub.className = 'btn btn-sm btn-outline';
+        panelLocal.style.display = 'block';
+        panelGithub.style.display = 'none';
+      } else {
+        btnLocal.className = 'btn btn-sm btn-outline';
+        btnGithub.className = 'btn btn-sm btn-primary';
+        panelLocal.style.display = 'none';
+        panelGithub.style.display = 'block';
+      }
+    }
+
+    // 监听 GitHub 地址输入，自动推导表情包 ID 与 名称
+    function onGitHubUrlInput(val) {
+      val = (val || '').trim();
+      const m = val.match(/github\.com\/[^\/]+\/([^\/\?#]+)/);
+      if (m && m[1]) {
+        let repo = m[1].replace(/\.git$/i, '').replace(/\.zip$/i, '');
+        const idInput = document.getElementById('custom-meme-id');
+        const nameInput = document.getElementById('custom-meme-name');
+        if (!idInput.value || idInput.value === 'custom_pack') {
+          idInput.value = repo.replace(/[^a-zA-Z0-9_\-]/g, '_');
+        }
+        if (!nameInput.value || nameInput.value === '我的自定义表情包') {
+          nameInput.value = repo;
+        }
+      }
+    }
+
+    // 从 GitHub 仓库拉取并导入表情包
+    async function importMemeFromGitHub() {
+      const url = document.getElementById('github-meme-url').value.trim();
+      const packId = document.getElementById('custom-meme-id').value.trim();
+      const packName = document.getElementById('custom-meme-name').value.trim();
+
+      if (!url) {
+        showToast("请输入 GitHub 仓库地址或 ZIP 下载链接！", "warning");
+        return;
+      }
+
+      const btn = document.getElementById('btn-github-meme');
+      btn.disabled = true;
+      btn.innerHTML = '<span>⚡ 正在从 GitHub 镜像拉取并执行优化（过滤、去重、归档）...</span>';
+
+      try {
+        const res = await fetch('/api/memes/import_github', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({ url, pack_id: packId, pack_name: packName })
+        });
+        const out = await res.json();
+        if (out.ok) {
+          const count = out.data ? (out.data.count || out.data.saved_count) : 0;
+          showToast(`🎉 从 GitHub 导入成功！共收录 ${count} 张表情并已直接同步至 AstrBot！`, "success", 6000);
+          document.getElementById('github-meme-url').value = '';
+          loadLocalMemePacks();
+        } else {
+          showToast("❌ 导入失败: " + (out.message || "网络异常"), "error", 6000);
+        }
+      } catch (e) {
+        showToast("请求异常: " + e.message, "error");
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<span>🚀 从 GitHub 拉取并优化导入</span>';
+      }
+    }
+
     // 加载本地自定义表情包列表
     async function loadLocalMemePacks() {
       const container = document.getElementById('local-memes-container');
@@ -1453,7 +1529,7 @@
         const res = await fetch('/api/memes/local');
         const out = await res.json();
         if (!out.ok || !out.packs || out.packs.length === 0) {
-          container.innerHTML = '<div style="color:var(--text-muted); font-size:13px; grid-column:span 2;">暂无本地自定义表情包，可从上方选择 ZIP 或图片一键导入。</div>';
+          container.innerHTML = '<div style="color:var(--text-muted); font-size:13px; grid-column:span 2;">暂无已安装的表情包，可从上方上传 ZIP 图片或粘贴 GitHub 仓库一键导入。</div>';
           return;
         }
 
@@ -1513,7 +1589,6 @@
         if (out.ok) {
           showToast(`已删除表情包【${packId}】`, "success");
           loadLocalMemePacks();
-          loadMemePacks();
         } else {
           showToast("删除失败: " + out.message, "error");
         }
@@ -1530,104 +1605,11 @@
         if (out.ok) {
           showToast(`✅ ${out.message}`, "success", 4000);
           loadLocalMemePacks();
-          loadMemePacks();
         } else {
           showToast("❌ 同步失败: " + out.message, "error");
         }
       } catch (e) {
         showToast("同步异常: " + e.message, "error");
-      }
-    }
-
-    // 加载开源社区表情包列表
-    async function loadMemePacks() {
-      const container = document.getElementById('meme-packs-container');
-      container.innerHTML = '<div style="color:var(--text-muted); font-size:13px;">正在加载表情包开源信息...</div>';
-
-      try {
-        const res = await fetch('/api/memes');
-        const out = await res.json();
-        if (out.ok && out.packs) {
-          if (out.local_path) document.getElementById('meme-local-path').innerText = out.local_path;
-          container.innerHTML = '';
-          out.packs.forEach(p => {
-            const card = document.createElement('div');
-            card.className = 'item-card';
-            card.innerHTML = `
-              <div>
-                <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:6px;">
-                  <span class="item-title">${p.name}</span>
-                  <span class="badge badge-primary">${p.tag}</span>
-                </div>
-                <div style="font-size:13px; color:var(--text-muted); margin-bottom:8px;">${p.description} (${p.count})</div>
-                <div class="url-box" style="margin-bottom:6px;">
-                  <strong>开源源码：</strong><a href="${p.repo}" target="_blank">${p.repo}</a>
-                </div>
-                <div style="font-size:12px; color:var(--text-muted);">
-                  状态：<strong>${p.installed ? '<span style="color:var(--success);">已下载安装</span>' : '未安装'}</strong>
-                  ${p.is_default ? ' · <span style="color:var(--primary); font-weight:bold;">当前主力套</span>' : ''}
-                </div>
-              </div>
-              <div style="display:flex; gap:8px; margin-top:8px;">
-                <button class="btn btn-sm ${p.installed ? 'btn-outline' : 'btn-primary'}" onclick="installMemePack('${p.id}')">
-                  ${p.installed ? '🔄 重新下载' : '📥 单独安装'}
-                </button>
-                <button class="btn btn-sm ${p.is_default ? 'btn-outline' : 'btn-success'}" ${p.is_default ? 'disabled' : ''} onclick="setDefaultMemePack('${p.id}')">
-                  ${p.is_default ? '✔ 当前默认' : '⭐ 设为主力套'}
-                </button>
-              </div>
-            `;
-            container.appendChild(card);
-          });
-        }
-      } catch (e) {
-        container.innerHTML = '<div style="color:var(--text-muted); font-size:13px;">加载表情包信息失败</div>';
-      }
-    }
-
-    // 单独安装表情包
-    async function installMemePack(packId) {
-      const logEl = document.getElementById('meme-log');
-      logEl.innerText = "正在从开源仓库下载安装表情包 [" + packId + "]...\n";
-      try {
-        const res = await fetch('/api/memes/install', {
-          method: 'POST',
-          headers: {'Content-Type': 'application/json'},
-          body: JSON.stringify({pack_id: packId})
-        });
-        const out = await res.json();
-        if (out.logs) logEl.innerText += out.logs.join('\n') + '\n';
-        if (out.ok) {
-          logEl.innerText += "\n🎉 表情包 [" + packId + "] 下载并安装完成！";
-          showToast(`表情包【${packId}】安装完成！`, "success");
-          loadMemePacks();
-        } else {
-          logEl.innerText += "\n❌ 安装失败: " + out.message;
-          showToast("安装失败: " + out.message, "error");
-        }
-      } catch (e) {
-        logEl.innerText += "\n❌ 请求异常: " + e.message;
-        showToast("请求异常: " + e.message, "error");
-      }
-    }
-
-    // 设为主力套
-    async function setDefaultMemePack(packId) {
-      try {
-        const res = await fetch('/api/memes/set_default', {
-          method: 'POST',
-          headers: {'Content-Type': 'application/json'},
-          body: JSON.stringify({pack_id: packId})
-        });
-        const out = await res.json();
-        if (out.ok) {
-          showToast("✔ " + out.message, "success");
-          loadMemePacks();
-        } else {
-          showToast("❌ 设置失败: " + out.message, "error");
-        }
-      } catch (e) {
-        showToast("请求异常: " + e.message, "error");
       }
     }
 

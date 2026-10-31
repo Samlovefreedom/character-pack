@@ -955,6 +955,7 @@ def import_and_optimize_meme_pack(pack_id, pack_name, files_map=None, zip_bytes=
     valid_exts = {".jpg", ".jpeg", ".png", ".gif", ".webp"}
     raw_images = []
 
+    manifest_meta = {}
     # 1. 如果上传了 ZIP 压缩包，解压提取
     if zip_bytes:
         try:
@@ -962,13 +963,21 @@ def import_and_optimize_meme_pack(pack_id, pack_name, files_map=None, zip_bytes=
                 for zinfo in z.infolist():
                     if zinfo.is_dir() or zinfo.filename.startswith("__MACOSX") or "/." in zinfo.filename:
                         continue
+                    base_fname = os.path.basename(zinfo.filename)
+                    if base_fname == "manifest.json":
+                        try:
+                            manifest_meta = json.loads(z.read(zinfo).decode("utf-8", "ignore"))
+                        except Exception:
+                            pass
                     ext = os.path.splitext(zinfo.filename)[1].lower()
                     if ext in valid_exts:
                         data = z.read(zinfo)
-                        base_fname = os.path.basename(zinfo.filename)
                         raw_images.append((base_fname, data))
         except Exception as e:
             return False, f"解析表情包 ZIP 压缩包失败: {e}"
+
+    if manifest_meta.get("name") and (not pack_name or pack_name.strip() in ("", "我的自定义表情包")):
+        clean_name = manifest_meta["name"].strip()
 
     # 2. 如果上传了单独的图片文件字典 {filename: bytes}
     if files_map:
@@ -1139,3 +1148,82 @@ def delete_local_meme_pack(pack_id):
                 pass
 
     return True, f"表情包 [{pack_id}] 已删除"
+
+
+def download_and_import_github_meme(repo_url, pack_id=None, pack_name=None):
+    """
+    从 GitHub 仓库或 ZIP 下载链接拉取表情包，并执行自动化过滤、去重、归档与同步注册
+    """
+    clean_url = (repo_url or "").strip()
+    if not clean_url:
+        return False, "GitHub 地址不能为空"
+
+    # 规范化 GitHub 链接
+    clean_url = clean_url.rstrip("/")
+    if clean_url.endswith(".git"):
+        clean_url = clean_url[:-4]
+
+    # 提取仓库名称作为候选 ID 和 Name
+    repo_name = ""
+    owner = ""
+    m = re.search(r"github\.com/([^/]+)/([^/]+)", clean_url)
+    if m:
+        owner = m.group(1)
+        repo_name = m.group(2).split("#")[0].split("?")[0]
+        if repo_name.endswith(".git"):
+            repo_name = repo_name[:-4]
+
+    if not repo_name:
+        repo_name = clean_url.split("/")[-1].replace(".zip", "") or "github_pack"
+
+    final_id = (pack_id or "").strip() or re.sub(r"[^\w\-_]", "_", repo_name)
+    final_name = (pack_name or "").strip() or repo_name
+
+    candidate_urls = []
+    if clean_url.lower().endswith(".zip") or "/archive/" in clean_url or "/releases/download/" in clean_url:
+        candidate_urls.append(clean_url)
+    elif owner and repo_name:
+        candidate_urls.append(f"https://github.com/{owner}/{repo_name}/archive/refs/heads/main.zip")
+        candidate_urls.append(f"https://github.com/{owner}/{repo_name}/archive/refs/heads/master.zip")
+        candidate_urls.append(f"https://github.com/{owner}/{repo_name}/archive/refs/tags/v1.0.0.zip")
+        candidate_urls.append(f"https://github.com/{owner}/{repo_name}/archive/refs/tags/v1.0.zip")
+    else:
+        candidate_urls.append(clean_url)
+
+    mirrors = ["https://hk.gh-proxy.com/", "https://gh-proxy.com/", "https://mirror.ghproxy.com/", ""]
+    zip_bytes = None
+    last_err = ""
+
+    for target_url in candidate_urls:
+        for m_prefix in mirrors:
+            fetch_url = m_prefix + target_url if m_prefix else target_url
+            try:
+                req = urllib.request.Request(
+                    fetch_url,
+                    headers={
+                        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+                    }
+                )
+                with urllib.request.urlopen(req, timeout=180) as r:
+                    header = r.read(4)
+                    if header != b"PK\x03\x04":
+                        last_err = "下载的文件不是有效的 ZIP 格式"
+                        continue
+                    chunks = [header]
+                    while True:
+                        buf = r.read(1024 * 512)
+                        if not buf:
+                            break
+                        chunks.append(buf)
+                    zip_bytes = b"".join(chunks)
+                    break
+            except Exception as e:
+                last_err = str(e)
+        if zip_bytes:
+            break
+
+    if not zip_bytes:
+        return False, f"从 GitHub 下载表情包失败: {last_err}，请检查仓库地址是否正确或网络是否畅通。"
+
+    return import_and_optimize_meme_pack(final_id, final_name, zip_bytes=zip_bytes)
+
