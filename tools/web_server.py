@@ -207,7 +207,14 @@ class ConfigRequestHandler(BaseHTTPRequestHandler):
 
         if path == "/api/persona/current":
             p_info = get_active_persona_info()
-            self.send_json({"ok": True, "data": p_info})
+            self.send_json({
+                "ok": True,
+                "persona_id": p_info.get("persona_id", "大肥鱼"),
+                "prompt": p_info.get("prompt", ""),
+                "owner_qq": p_info.get("owner_qq", ""),
+                "is_custom": p_info.get("is_custom", False),
+                "data": p_info
+            })
             return
 
         if path == "/api/persona/get":

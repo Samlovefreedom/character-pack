@@ -933,8 +933,11 @@
           document.getElementById('persona-owner-display').value = data.owner_qq;
         }
 
-        if (data.active_persona && data.active_persona.persona_id) {
-          document.getElementById('active-persona-name').innerText = `【${data.active_persona.persona_id}】`;
+        if (data.active_persona) {
+          const actName = (typeof data.active_persona === 'string')
+            ? data.active_persona
+            : (data.active_persona.persona_id || '大肥鱼');
+          document.getElementById('active-persona-name').innerText = `【${actName}】`;
         }
       } catch (e) {
         console.error("检测状态失败", e);
@@ -983,16 +986,20 @@
     async function loadActivePersona() {
       try {
         const res = await fetch('/api/persona/current');
-        const out = await res.json();
-        if (out.ok && out.persona_id) {
-          document.getElementById('persona-id').value = out.persona_id;
-          document.getElementById('persona-content').value = out.prompt || '';
-          document.getElementById('active-persona-name').innerText = `【${out.persona_id}】`;
-          if (out.owner_qq) {
-            document.getElementById('owner-qq-input').value = out.owner_qq;
-            document.getElementById('persona-owner-display').value = out.owner_qq;
+        if (res.ok) {
+          const out = await res.json();
+          const info = (out && out.data) ? out.data : out;
+          if (out && out.ok && info && (info.persona_id || info.prompt)) {
+            const pid = info.persona_id || '大肥鱼';
+            document.getElementById('persona-id').value = pid;
+            document.getElementById('persona-content').value = info.prompt || '';
+            document.getElementById('active-persona-name').innerText = `【${pid}】`;
+            if (info.owner_qq) {
+              document.getElementById('owner-qq-input').value = info.owner_qq;
+              document.getElementById('persona-owner-display').value = info.owner_qq;
+            }
+            return;
           }
-          return;
         }
       } catch (e) {
         console.warn("读取当前生效人设失败，将载入参考范式", e);
