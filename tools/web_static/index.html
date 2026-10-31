@@ -716,34 +716,107 @@
             </button>
           </div>
 
-          <div class="grid-2">
-            <div class="form-group" style="margin-bottom: 0;">
-              <label class="form-label">表情包代号 (Pack ID)</label>
-              <input type="text" id="custom-meme-id" class="input-control" placeholder="如: my_pack 或 cat_memes" value="custom_pack">
-              <div class="form-hint">仅限英文字母、数字和下划线</div>
+          <!-- 表情包归属与分类配置 -->
+          <div style="background:#ffffff; border:1px solid var(--border); border-radius:var(--radius); padding:14px; margin-bottom:14px;">
+            <div style="font-weight:600; font-size:13px; margin-bottom:10px; color:var(--text);">🎯 第一步：选择目标表情包</div>
+            <div style="display:flex; gap:16px; align-items:center; margin-bottom:12px; flex-wrap:wrap;">
+              <label style="display:flex; align-items:center; gap:6px; cursor:pointer; font-size:13px;">
+                <input type="radio" name="meme_target_mode" value="existing" id="target-mode-existing" checked onchange="toggleMemeTargetMode()">
+                <span>追加到已有表情包</span>
+              </label>
+              <label style="display:flex; align-items:center; gap:6px; cursor:pointer; font-size:13px;">
+                <input type="radio" name="meme_target_mode" value="new" id="target-mode-new" onchange="toggleMemeTargetMode()">
+                <span>新建独立表情包</span>
+              </label>
             </div>
-            <div class="form-group" style="margin-bottom: 0;">
-              <label class="form-label">表情包显示名称 (Pack Name)</label>
-              <input type="text" id="custom-meme-name" class="input-control" placeholder="如: 我的可爱猫猫包" value="我的自定义表情包">
-              <div class="form-hint">在 AstrBot 表情包列表中显示的名称</div>
+
+            <!-- 已有表情包选择下拉框 -->
+            <div id="wrapper-existing-pack" class="form-group" style="margin-bottom:0;">
+              <label class="form-label">选择目标表情包</label>
+              <select id="select-existing-pack" class="input-control" onchange="onExistingPackChange()">
+                <option value="">正在检测本地已有表情包...</option>
+              </select>
+            </div>
+
+            <!-- 新建表情包输入框 -->
+            <div id="wrapper-new-pack" class="grid-2" style="display:none; margin-bottom:0;">
+              <div class="form-group" style="margin-bottom:0;">
+                <label class="form-label">表情包代号 (Pack ID)</label>
+                <input type="text" id="custom-meme-id" class="input-control" placeholder="如: my_pack 或 break_ice_pack" value="custom_pack">
+                <div class="form-hint">英文字母、数字或下划线</div>
+              </div>
+              <div class="form-group" style="margin-bottom:0;">
+                <label class="form-label">表情包显示名称 (Pack Name)</label>
+                <input type="text" id="custom-meme-name" class="input-control" placeholder="如: 我的可爱表情包" value="我的自定义表情包">
+                <div class="form-hint">在 AstrBot 表情包列表中显示的名称</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 分类归属选择卡片 -->
+          <div style="background:#ffffff; border:1px solid var(--border); border-radius:var(--radius); padding:14px; margin-bottom:14px;">
+            <div style="font-weight:600; font-size:13px; margin-bottom:10px; color:var(--text);">🏷️ 第二步：指定表情分类（大模型依据情绪与语境触发）</div>
+            <div class="grid-2" style="margin-bottom:8px;">
+              <div class="form-group" style="margin-bottom:0;">
+                <label class="form-label">选择情绪 / 语境分类</label>
+                <select id="meme-category-select" class="input-control" onchange="onMemeCategoryChange()">
+                  <option value="打破冷场" data-desc="在群聊冷场、长时间无人发言或气氛尴尬时打破沉默、活跃气氛">⭐ 打破冷场 / 活跃气氛 (break_ice)</option>
+                  <option value="happy" data-desc="在高兴、喜悦、开心、庆祝或赞同时发送" selected>😄 开心 / 喜悦 (happy)</option>
+                  <option value="angry" data-desc="在生气、吐槽、暴怒、抗议或抓狂时发送">😡 生气 / 吐槽 (angry)</option>
+                  <option value="sad" data-desc="在难过、委屈、哭泣、失落或无奈时发送">😭 难过 / 委屈 (sad)</option>
+                  <option value="confused" data-desc="在疑惑、发问号、发懵、思考或不知如何回答时发送">❓ 疑惑 / 发懵 (confused)</option>
+                  <option value="surprised" data-desc="在震惊、惊讶、目瞪口呆或事情出乎意料时发送">😲 惊讶 / 震惊 (surprised)</option>
+                  <option value="shy" data-desc="在害羞、脸红、被夸奖或不好意思时发送">😳 害羞 / 脸红 (shy)</option>
+                  <option value="greeting" data-desc="在打招呼、刚上线、冒泡、挥手或向大家问好时发送">👋 打招呼 / 冒泡 (greeting)</option>
+                  <option value="sleep" data-desc="在犯困、想睡觉、休息或道晚安时发送">😴 犯困 / 晚安 (sleep)</option>
+                  <option value="food" data-desc="在讨论美食、干饭、想吃东西或饭点时发送">🍲 干饭 / 美食 (food)</option>
+                  <option value="affection" data-desc="在表达喜爱、摸摸头、夸奖、撒娇或示好时发送">🥰 喜欢 / 撒娇 (affection)</option>
+                  <option value="teasing" data-desc="在开玩笑、调侃、看戏、吃瓜或假装正经时发送">😏 调侃 / 吃瓜 (teasing)</option>
+                  <option value="custom">➕ 新建自定义分类 (支持任意名称与触发场景)...</option>
+                </select>
+              </div>
+              <div class="form-group" style="margin-bottom:0;">
+                <label class="form-label">分类触发提示词描述 (供大模型感知)</label>
+                <input type="text" id="meme-category-desc" class="input-control" value="在高兴、喜悦、开心、庆祝或赞同时发送" placeholder="告诉大模型在什么语境/情绪下触发此表情">
+              </div>
+            </div>
+
+            <!-- 自定义新分类输入区 -->
+            <div id="wrapper-custom-cat" style="display:none; padding-top:10px; border-top:1px dashed var(--border); margin-top:8px;">
+              <div class="grid-2">
+                <div class="form-group" style="margin-bottom:0;">
+                  <label class="form-label">自定义分类名称 / 标识</label>
+                  <input type="text" id="meme-custom-cat-name" class="input-control" placeholder="如: 打破冷场 或 撒娇" oninput="onCustomCatNameInput(this.value)">
+                  <div class="form-hint">支持中英文、数字、下划线</div>
+                </div>
+                <div class="form-group" style="margin-bottom:0;">
+                  <label class="form-label">快捷预设推荐</label>
+                  <div style="display:flex; gap:6px; flex-wrap:wrap; margin-top:4px;">
+                    <button type="button" class="btn btn-sm btn-outline" onclick="applyPresetCat('打破冷场', '在群聊冷场、长时间无人发言或气氛尴尬时打破沉默、活跃气氛')">打破冷场</button>
+                    <button type="button" class="btn btn-sm btn-outline" onclick="applyPresetCat('撒娇卖萌', '在求抱抱、撒娇、表达亲昵依赖或求原谅时发送')">撒娇卖萌</button>
+                    <button type="button" class="btn btn-sm btn-outline" onclick="applyPresetCat('摸鱼躺平', '在下班、不想工作、偷懒摸鱼或摆烂躺平场景使用')">摸鱼躺平</button>
+                    <button type="button" class="btn btn-sm btn-outline" onclick="applyPresetCat('无语流汗', '在遇到离谱发言、无话可说、流汗或尴尬时发送')">无语流汗</button>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
 
           <!-- 方式 1: 本地文件上传面板 -->
           <div id="panel-local-import">
             <div class="form-group" style="margin-top: 14px; margin-bottom: 0;">
-              <label class="form-label">选择表情包文件 (支持 .zip 压缩包或多张图片：PNG, JPG, GIF, WEBP)</label>
+              <label class="form-label">第三步：选择表情图片文件 (支持各类图像：PNG, JPG, GIF, WEBP, BMP 等，系统将全自动转码规范化、尺寸轻量化与去重)</label>
               <div class="drop-zone" id="meme-drop-zone" onclick="document.getElementById('meme-file-input').click()">
-                <input type="file" id="meme-file-input" multiple accept=".zip,image/png,image/jpeg,image/gif,image/webp" style="display: none;" onchange="handleMemeFileSelect(this.files)">
+                <input type="file" id="meme-file-input" multiple accept=".zip,image/*" style="display: none;" onchange="handleMemeFileSelect(this.files)">
                 <div style="font-size: 28px; margin-bottom: 6px;">🖼️</div>
                 <div style="font-weight: 600;" id="meme-drop-text">点击或将 ZIP 压缩包 / 多张表情图片拖入此处</div>
-                <div class="form-hint">系统将自动过滤非图片文件、进行 MD5 查重并规范化归档</div>
+                <div class="form-hint">系统将自动转码并过滤非图片文件、执行 MD5 查重并规范化归入选定分类目录</div>
               </div>
             </div>
 
             <div style="margin-top: 14px; display: flex; justify-content: flex-end;">
               <button class="btn btn-primary" id="btn-upload-meme" onclick="uploadAndOptimizeMemePack()">
-                <span>🚀 立即导入并优化表情包</span>
+                <span>🚀 立即导入、归类并优化表情包</span>
               </button>
             </div>
           </div>
@@ -753,7 +826,7 @@
             <div class="form-group" style="margin-top: 14px; margin-bottom: 0;">
               <label class="form-label">GitHub 仓库地址或 ZIP 下载链接</label>
               <input type="text" id="github-meme-url" class="input-control" placeholder="输入 GitHub 地址，例如: https://github.com/anka-afk/blue-fat-fish-meme-pack" oninput="onGitHubUrlInput(this.value)">
-              <div class="form-hint">💡 支持完整 GitHub 仓库主页地址或 Release ZIP 下载链接。系统将自动经高速镜像节点拉取、解压并执行 MD5 去重归档！</div>
+              <div class="form-hint">💡 支持完整 GitHub 仓库主页地址或 Release ZIP 下载链接。系统将自动经高速镜像节点拉取、解压并执行智能转码与 MD5 去重归档！</div>
             </div>
 
             <div style="margin-top: 14px; display: flex; justify-content: flex-end;">
@@ -1371,8 +1444,9 @@
       }
     }
 
-    // ===== 板块 3: 表情包管理 (本地导入优化 + 社区源) =====
+    // ===== 板块 3: 表情包管理 (本地导入优化 + 分类管理 + GitHub 导入) =====
     let selectedMemeFiles = [];
+    let localMemePacksCache = [];
 
     const memeDropZone = document.getElementById('meme-drop-zone');
     memeDropZone.addEventListener('dragover', (e) => { e.preventDefault(); memeDropZone.classList.add('dragover'); });
@@ -1390,36 +1464,131 @@
       selectedMemeFiles = Array.from(files);
       if (selectedMemeFiles.length === 1 && selectedMemeFiles[0].name.toLowerCase().endsWith('.zip')) {
         document.getElementById('meme-drop-text').innerText = `✔ 已选择 ZIP 压缩包: ${selectedMemeFiles[0].name} (${Math.round(selectedMemeFiles[0].size / 1024)} KB)`;
-        // 自动提取可能的名字
         const baseName = selectedMemeFiles[0].name.replace(/\.zip$/i, '');
         if (!document.getElementById('custom-meme-name').value || document.getElementById('custom-meme-name').value === '我的自定义表情包') {
           document.getElementById('custom-meme-name').value = baseName;
         }
       } else {
-        document.getElementById('meme-drop-text').innerText = `✔ 已选择 ${selectedMemeFiles.length} 个文件`;
+        document.getElementById('meme-drop-text').innerText = `✔ 已选择 ${selectedMemeFiles.length} 个表情图片文件`;
       }
-      showToast(`已载入 ${selectedMemeFiles.length} 个表情包文件`, "info");
+      showToast(`已载入 ${selectedMemeFiles.length} 个表情文件`, "info");
+    }
+
+    // 目标模式切换 (已有包 vs 新建包)
+    function toggleMemeTargetMode() {
+      const isExisting = document.getElementById('target-mode-existing').checked;
+      document.getElementById('wrapper-existing-pack').style.display = isExisting ? 'block' : 'none';
+      document.getElementById('wrapper-new-pack').style.display = isExisting ? 'none' : 'grid';
+      if (isExisting) {
+        onExistingPackChange();
+      }
+    }
+
+    // 已有表情包选择变化
+    function onExistingPackChange() {
+      const select = document.getElementById('select-existing-pack');
+      const packId = select.value;
+      if (!packId) return;
+      const found = localMemePacksCache.find(p => p.id === packId);
+      if (found) {
+        document.getElementById('custom-meme-id').value = found.id;
+        document.getElementById('custom-meme-name').value = found.name;
+      }
+    }
+
+    // 分类下拉变化
+    function onMemeCategoryChange() {
+      const sel = document.getElementById('meme-category-select');
+      const customWrapper = document.getElementById('wrapper-custom-cat');
+      const descInput = document.getElementById('meme-category-desc');
+      if (sel.value === 'custom') {
+        customWrapper.style.display = 'block';
+        const customName = document.getElementById('meme-custom-cat-name').value.trim();
+        if (customName && !descInput.value) {
+          descInput.value = `在表达「${customName}」情绪或语境时发送`;
+        }
+      } else {
+        customWrapper.style.display = 'none';
+        const opt = sel.options[sel.selectedIndex];
+        descInput.value = opt.getAttribute('data-desc') || '';
+      }
+    }
+
+    // 自定义分类名称输入
+    function onCustomCatNameInput(val) {
+      val = (val || '').trim();
+      const descInput = document.getElementById('meme-category-desc');
+      if (val && (!descInput.value || descInput.value.startsWith('在表达'))) {
+        descInput.value = `在表达「${val}」情绪或场景时使用`;
+      }
+    }
+
+    // 快速套用自定义分类预设
+    function applyPresetCat(name, desc) {
+      document.getElementById('meme-custom-cat-name').value = name;
+      document.getElementById('meme-category-desc').value = desc;
+      showToast(`已套用【${name}】分类预设`, "info");
+    }
+
+    // 点击卡片上的“追加表情”按钮快速锁定目标包
+    function targetPackForUpload(packId, packName) {
+      document.getElementById('target-mode-existing').checked = true;
+      toggleMemeTargetMode();
+      const select = document.getElementById('select-existing-pack');
+      select.value = packId;
+      onExistingPackChange();
+      document.getElementById('panel-local-import').scrollIntoView({ behavior: 'smooth', block: 'center' });
+      showToast(`已锁定【${packName}】，请在下方选择表情分类并添加图片`, "info", 4000);
     }
 
     // 上传并优化表情包
     async function uploadAndOptimizeMemePack() {
-      const packId = document.getElementById('custom-meme-id').value.trim();
-      const packName = document.getElementById('custom-meme-name').value.trim();
+      const isExisting = document.getElementById('target-mode-existing').checked;
+      let packId = '';
+      let packName = '';
 
-      if (!packId) { showToast("请输入表情包代号 (Pack ID)！", "warning"); return; }
-      if (!packName) { showToast("请输入表情包显示名称！", "warning"); return; }
+      if (isExisting) {
+        packId = document.getElementById('select-existing-pack').value.trim();
+        const found = localMemePacksCache.find(p => p.id === packId);
+        packName = found ? found.name : packId;
+        if (!packId) {
+          showToast("请先选择目标表情包，或切换为「新建独立表情包」！", "warning");
+          return;
+        }
+      } else {
+        packId = document.getElementById('custom-meme-id').value.trim();
+        packName = document.getElementById('custom-meme-name').value.trim();
+        if (!packId) { showToast("请输入表情包代号 (Pack ID)！", "warning"); return; }
+        if (!packName) { showToast("请输入表情包显示名称！", "warning"); return; }
+      }
+
+      // 获取分类
+      const catSelect = document.getElementById('meme-category-select');
+      let category = catSelect.value;
+      let categoryDesc = document.getElementById('meme-category-desc').value.trim();
+
+      if (category === 'custom') {
+        category = document.getElementById('meme-custom-cat-name').value.trim();
+        if (!category) {
+          showToast("请输入自定义分类名称（例如：打破冷场、撒娇等）！", "warning");
+          return;
+        }
+      }
+
       if (!selectedMemeFiles || selectedMemeFiles.length === 0) {
-        showToast("请先选择 ZIP 压缩包或图片文件！", "warning");
+        showToast("请先选择图片文件或 ZIP 压缩包！", "warning");
         return;
       }
 
       const btn = document.getElementById('btn-upload-meme');
       btn.disabled = true;
-      btn.innerHTML = '<span>⚡ 正在导入并执行智能优化（过滤、去重、归档）...</span>';
+      btn.innerHTML = '<span>⚡ 正在执行图像智能转码、轻量化与去重归类...</span>';
 
       const fd = new FormData();
       fd.append('pack_id', packId);
       fd.append('pack_name', packName);
+      fd.append('category', category);
+      fd.append('category_desc', categoryDesc);
 
       selectedMemeFiles.forEach(file => {
         fd.append('files', file);
@@ -1432,7 +1601,8 @@
         });
         const out = await res.json();
         if (out.ok) {
-          showToast(`🎉 表情包【${packName}】导入优化完成！成功保存 ${out.saved_count || 0} 张表情（已过滤重复）并已自动同步至 AstrBot`, "success", 6000);
+          const d = out.data || {};
+          showToast(`🎉 成功归入分类【${d.category || category}】！新增 ${d.saved_count || 0} 张表情（自动剔除 ${d.duplicates_removed || 0} 张重复项），已自动同步至 AstrBot`, "success", 6000);
           selectedMemeFiles = [];
           document.getElementById('meme-drop-text').innerText = '点击或将 ZIP 压缩包 / 多张表情图片拖入此处';
           loadLocalMemePacks();
@@ -1443,7 +1613,7 @@
         showToast("上传请求异常: " + e.message, "error");
       } finally {
         btn.disabled = false;
-        btn.innerHTML = '<span>🚀 立即导入并优化表情包</span>';
+        btn.innerHTML = '<span>🚀 立即导入、归类并优化表情包</span>';
       }
     }
 
@@ -1525,13 +1695,35 @@
     // 加载本地自定义表情包列表
     async function loadLocalMemePacks() {
       const container = document.getElementById('local-memes-container');
+      const selectPack = document.getElementById('select-existing-pack');
       try {
         const res = await fetch('/api/memes/local');
         const out = await res.json();
         if (!out.ok || !out.packs || out.packs.length === 0) {
-          container.innerHTML = '<div style="color:var(--text-muted); font-size:13px; grid-column:span 2;">暂无已安装的表情包，可从上方上传 ZIP 图片或粘贴 GitHub 仓库一键导入。</div>';
+          container.innerHTML = '<div style="color:var(--text-muted); font-size:13px; grid-column:span 2;">暂无已安装的表情包，可从上方上传图片或粘贴 GitHub 仓库一键导入。</div>';
+          selectPack.innerHTML = '<option value="">暂无本地表情包，请切换到新建表情包</option>';
+          document.getElementById('target-mode-new').checked = true;
+          toggleMemeTargetMode();
           return;
         }
+
+        localMemePacksCache = out.packs;
+        
+        // 更新已有表情包下拉选择框
+        const currentSelected = selectPack.value;
+        selectPack.innerHTML = '';
+        out.packs.forEach(p => {
+          const opt = document.createElement('option');
+          opt.value = p.id;
+          opt.textContent = `📦 ${p.name} (${p.id}) · 共 ${p.count} 张表情`;
+          selectPack.appendChild(opt);
+        });
+        if (currentSelected && out.packs.some(p => p.id === currentSelected)) {
+          selectPack.value = currentSelected;
+        } else {
+          selectPack.selectedIndex = 0;
+        }
+        onExistingPackChange();
 
         container.innerHTML = '';
         out.packs.forEach(p => {
@@ -1539,10 +1731,23 @@
           card.className = 'item-card';
 
           let thumbHtml = '';
-          if (p.sample_images && p.sample_images.length > 0) {
+          if (p.preview_samples && p.preview_samples.length > 0) {
             thumbHtml = '<div class="meme-preview-row">' + 
-              p.sample_images.map(img => `<img class="meme-thumb" src="/api/memes/image?pack_id=${encodeURIComponent(p.id)}&filename=${encodeURIComponent(img)}" alt="${img}">`).join('') +
+              p.preview_samples.map(img => `<img class="meme-thumb" src="/api/memes/image?pack_id=${encodeURIComponent(p.id)}&img=${encodeURIComponent(img)}" alt="${img}">`).join('') +
               '</div>';
+          }
+
+          let catBadgesHtml = '';
+          if (p.categories && p.categories.length > 0) {
+            catBadgesHtml = '<div style="display:flex; gap:6px; flex-wrap:wrap; margin:8px 0 6px;">' +
+              p.categories.map(c => `
+                <span class="badge" style="background:#e0e7ff; color:#3730a3; font-weight:600; font-size:11px;" title="${c.description || ''}">
+                  🏷️ ${c.name}: ${c.count}张
+                </span>
+              `).join('') +
+              '</div>';
+          } else {
+            catBadgesHtml = '<div style="font-size:11px; color:var(--text-muted); margin:4px 0;">尚未划定分类</div>';
           }
 
           card.innerHTML = `
@@ -1554,11 +1759,15 @@
                 </span>
               </div>
               <div style="font-size:12px; color:var(--text-muted);">
-                代号：<code>${p.id}</code> · 包含 <strong>${p.image_count}</strong> 张图片
+                代号：<code>${p.id}</code> · 总计 <strong>${p.count}</strong> 张表情
               </div>
+              ${catBadgesHtml}
               ${thumbHtml}
             </div>
-            <div style="display:flex; gap:8px; margin-top:8px; justify-content:flex-end;">
+            <div style="display:flex; gap:8px; margin-top:10px; justify-content:flex-end; flex-wrap:wrap;">
+              <button class="btn btn-sm btn-outline" onclick="targetPackForUpload('${p.id}', '${p.name.replace(/'/g, "\\'")}')">
+                <span>➕ 追加表情图片</span>
+              </button>
               <button class="btn btn-sm btn-outline" onclick="deleteLocalMemePack('${p.id}')">
                 <span>🗑️ 删除</span>
               </button>

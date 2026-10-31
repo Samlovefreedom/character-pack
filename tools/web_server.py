@@ -58,6 +58,7 @@ from web_adapter import (
     sync_all_local_memes_to_astrbot,
     delete_local_meme_pack,
     download_and_import_github_meme,
+    DEFAULT_MEME_CATEGORIES,
 )
 
 PORT = 18989
@@ -237,6 +238,10 @@ class ConfigRequestHandler(BaseHTTPRequestHandler):
         if path == "/api/memes/local":
             packs = list_local_meme_packs()
             self.send_json({"ok": True, "packs": packs})
+            return
+
+        if path == "/api/memes/categories":
+            self.send_json({"ok": True, "categories": DEFAULT_MEME_CATEGORIES})
             return
 
         if path == "/api/memes/image":
@@ -784,15 +789,18 @@ class ConfigRequestHandler(BaseHTTPRequestHandler):
             fields, files, all_files = parse_multipart(self.rfile, self.headers)
             pack_id = (fields.get("pack_id") or "").strip()
             pack_name = (fields.get("pack_name") or "").strip()
+            category = (fields.get("category") or "").strip()
+            category_desc = (fields.get("category_desc") or "").strip()
 
             zip_item = next((item for item in all_files if item["filename"].lower().endswith(".zip")), None)
             zip_bytes = zip_item["data"] if zip_item else None
 
-            valid_exts = (".jpg", ".jpeg", ".png", ".gif", ".webp")
+            # 支持更多常见图像格式，后端将自动转码并优化为 AstrBot 兼容的 PNG/JPG/GIF
+            valid_exts = (".jpg", ".jpeg", ".png", ".gif", ".webp", ".bmp", ".tiff", ".tif", ".jfif", ".heic", ".avif")
             files_map = {item["filename"]: item["data"] for item in all_files if item["filename"].lower().endswith(valid_exts)}
 
             if not zip_bytes and not files_map:
-                self.send_json({"ok": False, "message": "请上传表情图片文件（支持 .jpg, .png, .gif, .webp）或 .zip 压缩包"}, 400)
+                self.send_json({"ok": False, "message": "请上传表情图片文件（支持各种常见格式）或 .zip 压缩包"}, 400)
                 return
 
             if not pack_name and zip_item:
@@ -804,7 +812,11 @@ class ConfigRequestHandler(BaseHTTPRequestHandler):
             if not pack_name: pack_name = "自定义表情包"
             if not pack_id: pack_id = f"custom_meme_{uuid.uuid4().hex[:6]}"
 
-            ok, res = import_and_optimize_meme_pack(pack_id, pack_name, files_map=files_map, zip_bytes=zip_bytes)
+            ok, res = import_and_optimize_meme_pack(
+                pack_id, pack_name,
+                files_map=files_map, zip_bytes=zip_bytes,
+                category=category, category_desc=category_desc
+            )
             if ok:
                 self.send_json({"ok": True, "data": res})
             else:

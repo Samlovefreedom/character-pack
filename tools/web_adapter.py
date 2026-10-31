@@ -865,8 +865,92 @@ def get_meme_manager_data_dir():
     return candidates[0]
 
 
+DEFAULT_MEME_CATEGORIES = {
+    "happy": "在高兴、喜悦、开心、庆祝或赞同时发送",
+    "angry": "在生气、吐槽、暴怒、抗议或抓狂时发送",
+    "sad": "在难过、委屈、哭泣、失落或无奈时发送",
+    "confused": "在疑惑、发问号、发懵、思考或不知如何回答时发送",
+    "surprised": "在震惊、惊讶、目瞪口呆或事情出乎意料时发送",
+    "shy": "在害羞、脸红、被夸奖或不好意思时发送",
+    "break_ice": "在群聊冷场、长时间无人发言或气氛尴尬时打破沉默、活跃气氛",
+    "打破冷场": "在群聊冷场、长时间无人发言或气氛尴尬时打破沉默、活跃气氛",
+    "greeting": "在打招呼、刚上线、冒泡、挥手或向大家问好时发送",
+    "sleep": "在犯困、想睡觉、休息或道晚安时发送",
+    "food": "在讨论美食、干饭、想吃东西或饭点时发送",
+    "affection": "在表达喜爱、摸摸头、夸奖、撒娇或示好时发送",
+    "teasing": "在开玩笑、调侃、看戏、吃瓜或假装正经时发送",
+    "reply": "在肯定、拒绝、点头或直接回应对方时发送"
+}
+
+
+def optimize_and_convert_image(raw_bytes, orig_filename, max_dim=800):
+    """
+    接收任意格式的图像字节（JPG, PNG, GIF, WEBP, BMP, TIFF, HEIC, JFIF 等），
+    自动转换为 AstrBot meme 插件原生兼容的标准格式（.png / .jpg / .gif / .webp），
+    清洗 EXIF 隐私信息并做尺寸轻量化优化。
+    返回 (clean_bytes, output_ext)
+    """
+    valid_direct_exts = {".jpg", ".jpeg", ".png", ".gif", ".webp"}
+    try:
+        from PIL import Image as PILImage, ImageSequence
+        bio = io.BytesIO(raw_bytes)
+        with PILImage.open(bio) as img:
+            # 判断是否为动图（多帧）
+            is_animated = getattr(img, "is_animated", False) and getattr(img, "n_frames", 1) > 1
+            if is_animated:
+                frames = []
+                durations = []
+                anim_dim = min(max_dim, 500)
+                for frame in ImageSequence.Iterator(img):
+                    f = frame.copy().convert("RGBA")
+                    if max(f.size) > anim_dim:
+                        f.thumbnail((anim_dim, anim_dim), PILImage.Resampling.LANCZOS)
+                    frames.append(f)
+                    durations.append(frame.info.get("duration", 100))
+
+                out_bio = io.BytesIO()
+                p_frames = [f.convert("P", palette=PILImage.Palette.ADAPTIVE) for f in frames]
+                p_frames[0].save(
+                    out_bio,
+                    format="GIF",
+                    save_all=True,
+                    append_images=p_frames[1:],
+                    duration=durations,
+                    loop=img.info.get("loop", 0),
+                    optimize=True
+                )
+                return out_bio.getvalue(), ".gif"
+
+            # 静态图处理
+            if max(img.size) > max_dim:
+                img.thumbnail((max_dim, max_dim), PILImage.Resampling.LANCZOS)
+
+            has_alpha = img.mode in ("RGBA", "LA") or (img.mode == "P" and "transparency" in img.info)
+            out_bio = io.BytesIO()
+            if has_alpha:
+                converted = img.convert("RGBA")
+                converted.save(out_bio, format="PNG", optimize=True)
+                return out_bio.getvalue(), ".png"
+            else:
+                converted = img.convert("RGB")
+                converted.save(out_bio, format="JPEG", quality=88, optimize=True)
+                return out_bio.getvalue(), ".jpg"
+    except Exception:
+        ext = os.path.splitext(orig_filename)[1].lower()
+        if ext in valid_direct_exts:
+            return raw_bytes, ext
+        raise ValueError(f"无法识别或转换图片格式: {orig_filename}")
+
+
+def sanitize_category_name(category_name):
+    """规范化分类名称，支持中文、英文字母、数字、下划线及横杠，滤除路径特殊符号"""
+    cat = (category_name or "").strip()
+    clean = re.sub(r'[\/\\:\*\?"<>\|\.]', '_', cat).strip(" _")
+    return clean or "happy"
+
+
 def list_local_meme_packs():
-    """扫描项目根目录下 memes/ 存放的自定义表情包，并标记其在 AstrBot 中的同步状态"""
+    """扫描项目根目录下 memes/ 存放的自定义表情包，并标记其在 AstrBot 中的同步状态与各分类详情"""
     memes_root = os.path.join(PACK_ROOT, "memes")
     if not os.path.exists(memes_root):
         os.makedirs(memes_root, exist_ok=True)
@@ -897,24 +981,61 @@ def list_local_meme_packs():
         manifest_file = os.path.join(item_path, "manifest.json")
         name = pack_id
         description = "本地自定义导入表情包"
+        mani_categories = {}
         if os.path.exists(manifest_file):
             try:
                 mani = json.load(open(manifest_file, encoding="utf-8"))
                 name = mani.get("name") or name
                 description = mani.get("description") or description
+                if isinstance(mani.get("categories"), dict):
+                    mani_categories = mani["categories"]
             except Exception:
                 pass
 
-        # 扫描图片文件（支持根目录或 memes/ 子目录）
+        # 扫描图片文件及各分类目录
         images_dir = os.path.join(item_path, "memes")
         scan_dir = images_dir if os.path.exists(images_dir) else item_path
         all_imgs = []
-        for root, _, files in os.walk(scan_dir):
-            for f in sorted(files):
-                ext = os.path.splitext(f)[1].lower()
-                if ext in valid_exts and not f.startswith("."):
-                    rel = os.path.relpath(os.path.join(root, f), item_path).replace("\\", "/")
-                    all_imgs.append(rel)
+        cat_counts = {}
+
+        if os.path.exists(scan_dir):
+            for entry in os.listdir(scan_dir):
+                entry_path = os.path.join(scan_dir, entry)
+                if os.path.isdir(entry_path):
+                    # 分类子目录
+                    cat_name = entry
+                    c_imgs = []
+                    for root, _, files in os.walk(entry_path):
+                        for f in sorted(files):
+                            ext = os.path.splitext(f)[1].lower()
+                            if ext in valid_exts and not f.startswith("."):
+                                rel = os.path.relpath(os.path.join(root, f), item_path).replace("\\", "/")
+                                c_imgs.append(rel)
+                                all_imgs.append(rel)
+                    cat_counts[cat_name] = len(c_imgs)
+                elif os.path.isfile(entry_path):
+                    ext = os.path.splitext(entry)[1].lower()
+                    if ext in valid_exts and not entry.startswith("."):
+                        rel = os.path.relpath(entry_path, item_path).replace("\\", "/")
+                        all_imgs.append(rel)
+                        cat_counts["default"] = cat_counts.get("default", 0) + 1
+
+        # 汇总分类信息
+        categories_list = []
+        all_cat_names = set(cat_counts.keys()) | set(mani_categories.keys())
+        for cname in sorted(all_cat_names):
+            desc = ""
+            if cname in mani_categories:
+                meta = mani_categories[cname]
+                desc = meta.get("description") if isinstance(meta, dict) else str(meta)
+            if not desc:
+                desc = DEFAULT_MEME_CATEGORIES.get(cname, f"分类「{cname}」的表情图片")
+            categories_list.append({
+                "id": cname,
+                "name": cname,
+                "count": cat_counts.get(cname, 0),
+                "description": desc
+            })
 
         # 检查是否已同步至 AstrBot 实例
         is_synced = False
@@ -927,6 +1048,7 @@ def list_local_meme_packs():
             "name": name,
             "description": description,
             "count": len(all_imgs),
+            "categories": categories_list,
             "preview_samples": all_imgs[:6],
             "is_synced": is_synced,
             "local_path": item_path
@@ -935,27 +1057,40 @@ def list_local_meme_packs():
     return packs
 
 
-def import_and_optimize_meme_pack(pack_id, pack_name, files_map=None, zip_bytes=None):
+def import_and_optimize_meme_pack(pack_id, pack_name, files_map=None, zip_bytes=None, category=None, category_desc=None):
     """
     导入并优化表情包：
-    1. 过滤垃圾文件与非图片格式
-    2. MD5 智能去重
-    3. 规范化落盘到项目 memes/<pack_id>/
-    4. 自动生成标准 manifest.json
-    5. 自动同步到 AstrBot 的 plugin_data/meme_manager/packs/<pack_id>/ 并注册启用
+    1. 支持指定或自动创建分类（如打破冷场、开心、生气等）
+    2. 支持任意格式自动转码与轻量化优化（BMP, TIFF, HEIC, PNG, JPG, GIF 等）
+    3. MD5 智能去重
+    4. 规范化落盘到项目 memes/<pack_id>/memes/<category>/
+    5. 自动生成与更新标准 manifest.json 及 memes_data.json
+    6. 自动同步到 AstrBot 的 plugin_data/meme_manager/packs/<pack_id>/ 并注册启用
     """
     safe_id = re.sub(r"[^\w\-_]", "", pack_id.strip()) or f"pack_{uuid.uuid4().hex[:8]}"
     clean_name = pack_name.strip() or safe_id
+    clean_cat = sanitize_category_name(category or "happy")
+    cat_desc = (category_desc or "").strip() or DEFAULT_MEME_CATEGORIES.get(clean_cat, f"在表达{clean_cat}情绪或语境时发送")
 
     memes_root = os.path.join(PACK_ROOT, "memes")
     target_dir = os.path.join(memes_root, safe_id)
     target_memes_dir = os.path.join(target_dir, "memes")
     os.makedirs(target_memes_dir, exist_ok=True)
 
-    valid_exts = {".jpg", ".jpeg", ".png", ".gif", ".webp"}
-    raw_images = []
+    # 读取已有 manifest（如果是向现有包追加表情）
+    manifest_file = os.path.join(target_dir, "manifest.json")
+    existing_manifest = {}
+    if os.path.exists(manifest_file):
+        try:
+            existing_manifest = json.load(open(manifest_file, encoding="utf-8"))
+        except Exception:
+            existing_manifest = {}
 
+    existing_categories = existing_manifest.get("categories", {}) if isinstance(existing_manifest.get("categories"), dict) else {}
+
+    raw_items = []  # [(filename, raw_data, target_category)]
     manifest_meta = {}
+
     # 1. 如果上传了 ZIP 压缩包，解压提取
     if zip_bytes:
         try:
@@ -969,75 +1104,145 @@ def import_and_optimize_meme_pack(pack_id, pack_name, files_map=None, zip_bytes=
                             manifest_meta = json.loads(z.read(zinfo).decode("utf-8", "ignore"))
                         except Exception:
                             pass
-                    ext = os.path.splitext(zinfo.filename)[1].lower()
-                    if ext in valid_exts:
-                        data = z.read(zinfo)
-                        raw_images.append((base_fname, data))
+                        continue
+
+                    # 判断该文件在 zip 中是否位于某个子分类目录内
+                    parts = [p for p in zinfo.filename.replace("\\", "/").split("/") if p]
+                    item_cat = clean_cat
+                    if len(parts) >= 2:
+                        # 类似 memes/<cat>/img.png 或 <pack>/<cat>/img.png
+                        cand_cat = parts[-2]
+                        if cand_cat not in ("memes", "previews", safe_id):
+                            item_cat = sanitize_category_name(cand_cat)
+
+                    data = z.read(zinfo)
+                    raw_items.append((base_fname, data, item_cat))
         except Exception as e:
             return False, f"解析表情包 ZIP 压缩包失败: {e}"
 
     if manifest_meta.get("name") and (not pack_name or pack_name.strip() in ("", "我的自定义表情包")):
         clean_name = manifest_meta["name"].strip()
+    if manifest_meta.get("categories") and isinstance(manifest_meta["categories"], dict):
+        for k, v in manifest_meta["categories"].items():
+            existing_categories[k] = v
 
     # 2. 如果上传了单独的图片文件字典 {filename: bytes}
     if files_map:
         for fname, data in files_map.items():
-            ext = os.path.splitext(fname)[1].lower()
-            if ext in valid_exts and not fname.startswith("."):
-                raw_images.append((os.path.basename(fname), data))
+            raw_items.append((os.path.basename(fname), data, clean_cat))
 
-    if not raw_images:
-        return False, "未发现有效的表情图片文件（支持 .jpg, .png, .gif, .webp）"
+    if not raw_items:
+        return False, "未发现有效的表情图片文件或压缩包内容"
 
-    # 3. MD5 智能去重与规范重命名
+    # 3. 图像格式转换、MD5 智能去重与规范落盘
+    # 先收集目标目录中已存在的所有图片哈希，支持断点追加去重
     seen_hashes = set()
+    for root, _, files in os.walk(target_memes_dir):
+        for f in files:
+            p = os.path.join(root, f)
+            try:
+                with open(p, "rb") as ef:
+                    seen_hashes.add(hashlib.md5(ef.read()).hexdigest())
+            except Exception:
+                pass
+
     saved_count = 0
     dup_count = 0
     saved_files = []
 
-    for orig_name, data in raw_images:
-        if len(data) == 0:
+    for orig_name, data, it_cat in raw_items:
+        if not data or len(data) == 0:
             continue
-        h = hashlib.md5(data).hexdigest()
+
+        # 智能转码与优化
+        try:
+            opt_data, opt_ext = optimize_and_convert_image(data, orig_name)
+        except Exception:
+            continue
+
+        h = hashlib.md5(opt_data).hexdigest()
         if h in seen_hashes:
             dup_count += 1
             continue
         seen_hashes.add(h)
 
-        ext = os.path.splitext(orig_name)[1].lower()
-        clean_basename = re.sub(r"[^\w\-_.]", "_", orig_name)
-        if not clean_basename or clean_basename == ext:
-            clean_basename = f"meme_{saved_count + 1:03d}{ext}"
+        # 确保对应分类文件夹存在
+        cat_dir = os.path.join(target_memes_dir, it_cat)
+        os.makedirs(cat_dir, exist_ok=True)
 
-        save_path = os.path.join(target_memes_dir, clean_basename)
+        clean_base = re.sub(r"[^\w\-_.]", "_", os.path.splitext(orig_name)[0]).strip("_")
+        if not clean_base:
+            clean_base = f"img_{uuid.uuid4().hex[:6]}"
+        save_filename = f"{clean_base}{opt_ext}"
+        save_path = os.path.join(cat_dir, save_filename)
+
+        # 避免重名覆盖
+        if os.path.exists(save_path):
+            save_filename = f"{clean_base}_{uuid.uuid4().hex[:4]}{opt_ext}"
+            save_path = os.path.join(cat_dir, save_filename)
+
         with open(save_path, "wb") as f:
-            f.write(data)
-        saved_files.append(f"memes/{clean_basename}")
+            f.write(opt_data)
+
+        rel_img = f"memes/{it_cat}/{save_filename}"
+        saved_files.append(rel_img)
         saved_count += 1
 
-    if saved_count == 0:
-        return False, "去重后没有可保存的有效表情图片"
+        # 记录分类描述
+        if it_cat not in existing_categories:
+            desc = cat_desc if it_cat == clean_cat else DEFAULT_MEME_CATEGORIES.get(it_cat, f"分类「{it_cat}」表情")
+            existing_categories[it_cat] = {"description": desc}
 
-    # 4. 生成标准 manifest.json
+    # 总是确保本次指定的分类有描述记录
+    if clean_cat not in existing_categories:
+        existing_categories[clean_cat] = {"description": cat_desc}
+
+    # 4. 重新统计全部有效图片并生成标准 manifest.json 及 memes_data.json
+    all_current_images = []
+    valid_exts = {".jpg", ".jpeg", ".png", ".gif", ".webp"}
+    for root, _, files in os.walk(target_memes_dir):
+        for f in sorted(files):
+            ext = os.path.splitext(f)[1].lower()
+            if ext in valid_exts and not f.startswith("."):
+                rel = os.path.relpath(os.path.join(root, f), target_dir).replace("\\", "/")
+                all_current_images.append(rel)
+
+    total_count = len(all_current_images)
+    if total_count == 0:
+        return False, "未能成功保存任何有效的表情图片"
+
     manifest = {
         "schema_version": 1,
         "id": safe_id,
         "name": clean_name,
-        "version": "1.0.0",
-        "description": f"收录 {saved_count} 个表情，已完成 MD5 去重与自动化优化。",
-        "author": "用户导入",
+        "version": existing_manifest.get("version", "1.0.0"),
+        "description": f"收录 {total_count} 个表情，包含 {len(existing_categories)} 个分类，已完成智能转码与 MD5 去重优化。",
+        "author": existing_manifest.get("author", "用户导入"),
         "tags": ["custom", "imported"],
-        "icon": saved_files[0] if saved_files else "",
-        "previews": saved_files[:4],
-        "total_count": saved_count
+        "icon": all_current_images[0] if all_current_images else "",
+        "previews": all_current_images[:6],
+        "total_count": total_count,
+        "categories": existing_categories
     }
-    with open(os.path.join(target_dir, "manifest.json"), "w", encoding="utf-8") as f:
+
+    with open(manifest_file, "w", encoding="utf-8") as f:
         json.dump(manifest, f, ensure_ascii=False, indent=2)
+
+    # 写入 memes_data.json 供 AstrBot CategoryManager 使用
+    memes_data_path = os.path.join(target_dir, "memes_data.json")
+    memes_data_dict = {}
+    for c, meta in existing_categories.items():
+        if isinstance(meta, dict):
+            memes_data_dict[c] = meta.get("description", "请添加描述")
+        else:
+            memes_data_dict[c] = str(meta)
+    with open(memes_data_path, "w", encoding="utf-8") as f:
+        json.dump(memes_data_dict, f, ensure_ascii=False, indent=2)
 
     # 5. 同步写入 AstrBot 实例
     sync_ok, sync_msg = sync_single_pack_to_astrbot(safe_id, clean_name, target_dir)
 
-    msg = f"成功导入表情包「{clean_name}」！共收录 {saved_count} 张表情（已智能去重剔除 {dup_count} 张重复图片）。"
+    msg = f"成功导入表情包「{clean_name}」！归入分类「{clean_cat}」，本次新增 {saved_count} 张表情（自动剔除 {dup_count} 张重复项），全包共 {total_count} 张表情。"
     if sync_ok:
         msg += " 已直接同步并注册至 AstrBot！"
     else:
@@ -1046,7 +1251,9 @@ def import_and_optimize_meme_pack(pack_id, pack_name, files_map=None, zip_bytes=
     return True, {
         "pack_id": safe_id,
         "name": clean_name,
-        "count": saved_count,
+        "category": clean_cat,
+        "saved_count": saved_count,
+        "total_count": total_count,
         "duplicates_removed": dup_count,
         "message": msg
     }
@@ -1096,6 +1303,22 @@ def sync_single_pack_to_astrbot(pack_id, pack_name, source_pack_dir):
     with open(reg_file, "w", encoding="utf-8") as f:
         json.dump(registry, f, ensure_ascii=False, indent=2)
 
+    # 同步激活到 selection_rules.json，确保 AstrBot 对话中能生效
+    rules_file = os.path.join(data_dir, "selection_rules.json")
+    if os.path.exists(rules_file):
+        try:
+            rules_data = json.load(open(rules_file, encoding="utf-8"))
+            for r in rules_data.get("rules", []):
+                pids = r.setdefault("pack_ids", [])
+                if pack_id not in pids:
+                    pids.append(pack_id)
+                if not r.get("pack_id"):
+                    r["pack_id"] = pack_id
+            with open(rules_file, "w", encoding="utf-8") as f:
+                json.dump(rules_data, f, ensure_ascii=False, indent=2)
+        except Exception:
+            pass
+
     return True, "同步成功"
 
 
@@ -1144,6 +1367,19 @@ def delete_local_meme_pack(pack_id):
                 ]
                 with open(reg_file, "w", encoding="utf-8") as f:
                     json.dump(reg_data, f, ensure_ascii=False, indent=2)
+            except Exception:
+                pass
+
+        rules_file = os.path.join(data_dir, "selection_rules.json")
+        if os.path.exists(rules_file):
+            try:
+                rules_data = json.load(open(rules_file, encoding="utf-8"))
+                for r in rules_data.get("rules", []):
+                    r["pack_ids"] = [x for x in r.get("pack_ids", []) if x != pack_id]
+                    if r.get("pack_id") == pack_id:
+                        r["pack_id"] = r["pack_ids"][0] if r["pack_ids"] else ""
+                with open(rules_file, "w", encoding="utf-8") as f:
+                    json.dump(rules_data, f, ensure_ascii=False, indent=2)
             except Exception:
                 pass
 
