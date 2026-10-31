@@ -522,6 +522,50 @@ def check_plugins_completeness(client=None):
     }
 
 
+def save_persona_offline(persona_id, prompt):
+    """直接落盘更新 AstrBot SQLite 数据库 (data_v4.db) 与 cmd_config.json（离线与在线均生效）。"""
+    instances = detect_astrbot_instances()
+    if not instances:
+        return False, "未找到 AstrBot 实例目录"
+    
+    inst_dir = instances[0]["dir"]
+    db_path = None
+    cfg_path = None
+    for sub in [os.path.join(inst_dir, "core", "data"), os.path.join(inst_dir, "data")]:
+        db_cand = os.path.join(sub, "data_v4.db")
+        cfg_cand = os.path.join(sub, "cmd_config.json")
+        if os.path.exists(db_cand): db_path = db_cand
+        if os.path.exists(cfg_cand): cfg_path = cfg_cand
+
+    if not db_path:
+        return False, "未找到 AstrBot 数据库 data_v4.db"
+
+    try:
+        import sqlite3
+        conn = sqlite3.connect(db_path)
+        cur = conn.cursor()
+        cur.execute("SELECT id FROM personas WHERE persona_id = ?", (persona_id,))
+        row = cur.fetchone()
+        if row:
+            cur.execute("UPDATE personas SET system_prompt = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?", (prompt, row[0]))
+        else:
+            cur.execute("INSERT INTO personas (persona_id, system_prompt, begin_dialogs, tools, skills, created_at, updated_at) VALUES (?, ?, '[]', '[]', '[]', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)", (persona_id, prompt))
+        conn.commit()
+        conn.close()
+
+        if cfg_path and os.path.exists(cfg_path):
+            with open(cfg_path, "r", encoding="utf-8-sig") as f:
+                cfg = json.load(f)
+            ar = cfg.setdefault("agent_runner", {}).setdefault("config", {}).setdefault("persona", {})
+            ar["persona_id"] = persona_id
+            with open(cfg_path, "w", encoding="utf-8") as f:
+                json.dump(cfg, f, ensure_ascii=False, indent=2)
+
+        return True, f"已成功保存人格 [{persona_id}] 到 AstrBot 本地实例"
+    except Exception as e:
+        return False, f"离线保存人格失败: {e}"
+
+
 class AstrBotClient:
     def __init__(self, base_url):
         self.root = base_url.rstrip("/")

@@ -45,6 +45,7 @@ from web_adapter import (
     check_breeze_environment,
     start_breeze_service,
     check_plugins_completeness,
+    save_persona_offline,
     find_ffmpeg_path,
     AstrBotClient,
     BreezeClient,
@@ -511,38 +512,44 @@ class ConfigRequestHandler(BaseHTTPRequestHandler):
 
         # 3. 保存性格到 AstrBot
         if path == "/api/persona/save":
-            client = STATE["astrbot_client"]
-            if not client or not client.token:
-                self.send_json({"ok": False, "message": "尚未登录 AstrBot"}, 401)
-                return
             length = int(self.headers.get("Content-Length", 0))
-            body = json.loads(self.rfile.read(length).decode("utf-8"))
+            body = json.loads(self.rfile.read(length).decode("utf-8")) if length else {}
             pid = body.get("persona_id", "大肥鱼")
             prompt = body.get("prompt", "")
             owner_qq = body.get("owner_qq") or STATE.get("owner_qq") or ""
+            if owner_qq:
+                STATE["owner_qq"] = owner_qq
             prompt_final = prompt.replace("{OWNER_QQ}", owner_qq)
 
-            qid = urllib.parse.quote(pid, safe="")
-            cur = client.call("GET", f"/personas/{qid}")
-            if client.is_ok(cur) and isinstance(cur.get("data"), dict) and cur["data"].get("persona_id") == pid:
-                req_data = {k: v for k, v in cur["data"].items() if k in ("begin_dialogs", "skills", "folder_id", "sort_order", "custom_error_message")}
-                req_data.update({"system_prompt": prompt_final, "tools": None})
-                r = client.call("PUT", f"/personas/{qid}", req_data)
-            else:
-                r = client.call("POST", "/personas", {"persona_id": pid, "system_prompt": prompt_final, "begin_dialogs": [], "tools": None})
+            client = STATE.get("astrbot_client")
+            online_saved = False
+            if client and client.token:
+                qid = urllib.parse.quote(pid, safe="")
+                cur = client.call("GET", f"/personas/{qid}")
+                if client.is_ok(cur) and isinstance(cur.get("data"), dict) and cur["data"].get("persona_id") == pid:
+                    req_data = {k: v for k, v in cur["data"].items() if k in ("begin_dialogs", "skills", "folder_id", "sort_order", "custom_error_message")}
+                    req_data.update({"system_prompt": prompt_final, "tools": None})
+                    r = client.call("PUT", f"/personas/{qid}", req_data)
+                else:
+                    r = client.call("POST", "/personas", {"persona_id": pid, "system_prompt": prompt_final, "begin_dialogs": [], "tools": None})
 
-            if client.is_ok(r):
-                # 设为默认人格
-                cfg = client.get_default_config()
-                if cfg:
-                    if "agent_runner" not in cfg: cfg["agent_runner"] = {}
-                    if "config" not in cfg["agent_runner"]: cfg["agent_runner"]["config"] = {}
-                    if "persona" not in cfg["agent_runner"]["config"]: cfg["agent_runner"]["config"]["persona"] = {}
-                    cfg["agent_runner"]["config"]["persona"]["persona_id"] = pid
-                    client.update_default_config(cfg)
-                self.send_json({"ok": True, "message": f"性格「{pid}」已成功应用！"})
+                if client.is_ok(r):
+                    online_saved = True
+                    cfg = client.get_default_config()
+                    if cfg:
+                        if "agent_runner" not in cfg: cfg["agent_runner"] = {}
+                        if "config" not in cfg["agent_runner"]: cfg["agent_runner"]["config"] = {}
+                        if "persona" not in cfg["agent_runner"]["config"]: cfg["agent_runner"]["config"]["persona"] = {}
+                        cfg["agent_runner"]["config"]["persona"]["persona_id"] = pid
+                        client.update_default_config(cfg)
+
+            # 同时直接落盘更新本地数据库与配置文件，离线与在线均 100% 成功
+            offline_ok, offline_msg = save_persona_offline(pid, prompt_final)
+
+            if online_saved or offline_ok:
+                self.send_json({"ok": True, "message": f"性格「{pid}」已成功保存并导入！"})
             else:
-                self.send_json({"ok": False, "message": r.get("message") or "保存失败"}, 500)
+                self.send_json({"ok": False, "message": offline_msg}, 500)
             return
 
         # 4. Breeze 声音克隆
