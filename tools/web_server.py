@@ -64,12 +64,17 @@ STATE = {
 
 
 def auto_detect_astrbot():
-    if STATE.get("astrbot_url") and test_astrbot_url(STATE["astrbot_url"]):
-        return detect_astrbot_instances()
-    instances = detect_astrbot_instances()
-    active_url = scan_active_astrbot_url()
-    STATE["astrbot_url"] = active_url
-    return instances
+    if not (STATE.get("astrbot_url") and test_astrbot_url(STATE["astrbot_url"])):
+        active_url = scan_active_astrbot_url()
+        STATE["astrbot_url"] = active_url
+
+    # 自动保障 client 实例与免密 token 可用
+    if not STATE.get("astrbot_client") or STATE["astrbot_client"].root != STATE["astrbot_url"]:
+        STATE["astrbot_client"] = AstrBotClient(STATE["astrbot_url"])
+    elif not STATE["astrbot_client"].token:
+        STATE["astrbot_client"].try_auto_token()
+
+    return detect_astrbot_instances()
 
 
 def convert_to_wav(audio_bytes, orig_filename):

@@ -546,14 +546,21 @@ def save_persona_offline(persona_id, prompt):
 
     try:
         import sqlite3
-        conn = sqlite3.connect(db_path)
+        conn = sqlite3.connect(db_path, timeout=15.0)
         cur = conn.cursor()
+        cur.execute("PRAGMA busy_timeout = 15000")
         cur.execute("SELECT id FROM personas WHERE persona_id = ?", (persona_id,))
         row = cur.fetchone()
         if row:
             cur.execute("UPDATE personas SET system_prompt = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?", (prompt, row[0]))
         else:
-            cur.execute("INSERT INTO personas (persona_id, system_prompt, begin_dialogs, tools, skills, created_at, updated_at) VALUES (?, ?, '[]', '[]', '[]', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)", (persona_id, prompt))
+            cur.execute("SELECT COALESCE(MAX(sort_order), 0) + 1 FROM personas")
+            next_sort = cur.fetchone()[0]
+            cur.execute(
+                "INSERT INTO personas (persona_id, system_prompt, begin_dialogs, tools, skills, sort_order, created_at, updated_at) "
+                "VALUES (?, ?, '[]', '[]', '[]', ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)",
+                (persona_id, prompt, next_sort)
+            )
         conn.commit()
         conn.close()
 
@@ -574,6 +581,36 @@ class AstrBotClient:
     def __init__(self, base_url):
         self.root = base_url.rstrip("/")
         self.token = None
+        self.try_auto_token()
+
+    def try_auto_token(self):
+        """尝试从本地 cmd_config.json 自动提取 jwt_secret 生成免密直连 Token"""
+        try:
+            import jwt
+            import datetime
+            instances = detect_astrbot_instances()
+            cfg_path = None
+            if instances and instances[0].get("dir"):
+                cand = os.path.join(instances[0]["dir"], "data", "cmd_config.json")
+                if os.path.exists(cand): cfg_path = cand
+            if not cfg_path:
+                cand = os.path.join(os.path.expanduser("~"), ".astrbot_launcher", "instances", "*", "core", "data", "cmd_config.json")
+                matches = glob.glob(cand)
+                if matches: cfg_path = matches[0]
+            if cfg_path and os.path.exists(cfg_path):
+                cfg = json.load(open(cfg_path, encoding="utf-8-sig"))
+                secret = cfg.get("dashboard", {}).get("jwt_secret")
+                username = cfg.get("dashboard", {}).get("username", "astrbot")
+                if secret:
+                    payload = {
+                        "username": username,
+                        "exp": datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(days=7)
+                    }
+                    self.token = jwt.encode(payload, secret, algorithm="HS256")
+                    return True
+        except Exception:
+            pass
+        return False
 
     def call(self, method, path, body=None, raw_body=None, content_type="application/json", timeout=120):
         url = self.root + "/api/v1" + path
