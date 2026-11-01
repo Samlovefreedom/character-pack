@@ -18,6 +18,7 @@ import urllib.parse
 import urllib.request
 import uuid
 import zipfile
+import traceback
 from http.server import HTTPServer, BaseHTTPRequestHandler
 
 try:
@@ -410,6 +411,13 @@ class ConfigRequestHandler(BaseHTTPRequestHandler):
         self.send_error(404, "Not Found")
 
     def do_POST(self):
+        try:
+            self._handle_post()
+        except Exception as e:
+            traceback.print_exc()
+            self.send_json({"ok": False, "message": f"请求处理异常: {e}"}, 500)
+
+    def _handle_post(self):
         parsed = urllib.parse.urlparse(self.path)
         path = parsed.path
 
@@ -665,30 +673,35 @@ class ConfigRequestHandler(BaseHTTPRequestHandler):
 
         # 4. Breeze 声音克隆
         if path == "/api/voice/clone":
-            fields, files = parse_multipart(self.rfile, self.headers)
-            file_item = files.get("audio")
-            ref_text = (fields.get("ref_text") or "").strip()
-            voice_name = (fields.get("voice_name") or fields.get("name") or "").strip()
+            try:
+                fields, files, all_files = parse_multipart(self.rfile, self.headers)
+                file_item = files.get("audio") or next((item for item in all_files if item.get("filename")), None)
+                ref_text = (fields.get("ref_text") or "").strip()
+                voice_name = (fields.get("voice_name") or fields.get("name") or "").strip()
 
-            if not voice_name:
-                self.send_json({"ok": False, "message": "音色名称不能为空"}, 400)
-                return
-            if not file_item or not file_item.get("data"):
-                self.send_json({"ok": False, "message": "未接收到音频文件"}, 400)
-                return
-            if not ref_text:
-                self.send_json({"ok": False, "message": "参考文本不能为空"}, 400)
-                return
+                if not voice_name:
+                    self.send_json({"ok": False, "message": "音色名称不能为空"}, 400)
+                    return
+                if not file_item or not file_item.get("data"):
+                    self.send_json({"ok": False, "message": "未接收到音频文件"}, 400)
+                    return
+                if not ref_text:
+                    self.send_json({"ok": False, "message": "参考文本不能为空"}, 400)
+                    return
 
-            raw_bytes = file_item["data"]
-            processed_bytes, out_name = convert_to_wav(raw_bytes, file_item["filename"])
+                raw_bytes = file_item["data"]
+                processed_bytes, out_name = convert_to_wav(raw_bytes, file_item.get("filename", "audio.wav"))
 
-            breeze = STATE["breeze_client"]
-            ok, msg = breeze.clone_voice(voice_name, processed_bytes, out_name, ref_text, f"克隆:{voice_name}")
-            if ok:
-                self.send_json({"ok": True, "message": f"音色 [{voice_name}] 克隆成功！"})
-            else:
-                self.send_json({"ok": False, "message": f"Breeze 报错: {msg}"}, 500)
+                breeze = STATE["breeze_client"]
+                ok, msg = breeze.clone_voice(voice_name, processed_bytes, out_name, ref_text, f"克隆:{voice_name}")
+                if ok:
+                    self.send_json({"ok": True, "message": f"音色 [{voice_name}] 克隆成功！"})
+                else:
+                    self.send_json({"ok": False, "message": f"Breeze 报错: {msg}"}, 500)
+            except Exception as e:
+                import traceback
+                traceback.print_exc()
+                self.send_json({"ok": False, "message": f"克隆处理异常: {e}"}, 500)
             return
 
         # 5. 试听生成
