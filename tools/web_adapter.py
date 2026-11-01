@@ -577,6 +577,10 @@ def save_persona_offline(persona_id, prompt):
         conn = sqlite3.connect(db_path, timeout=15.0)
         cur = conn.cursor()
         cur.execute("PRAGMA busy_timeout = 15000")
+
+        # 单性格策略：清理所有其它历史自定义性格，仅保留当前性格
+        cur.execute("DELETE FROM personas WHERE persona_id != ? AND persona_id != 'default'", (persona_id,))
+
         cur.execute("SELECT id FROM personas WHERE persona_id = ?", (persona_id,))
         row = cur.fetchone()
         if row:
@@ -743,6 +747,17 @@ class BreezeClient:
         except Exception as e:
             return False, str(e)
 
+    def delete_voice(self, voice_id):
+        url = f"{self.base}/v1/voices/{urllib.parse.quote(voice_id, safe='')}"
+        req = urllib.request.Request(url, method="DELETE")
+        try:
+            with urllib.request.urlopen(req, timeout=10) as r:
+                return True, r.read().decode("utf-8", "replace")
+        except urllib.error.HTTPError as e:
+            return False, e.read().decode("utf-8", "replace")
+        except Exception as e:
+            return False, str(e)
+
     def speak(self, voice_name, text):
         url = f"{self.base}/v1/audio/speech"
         payload = json.dumps({
@@ -771,6 +786,38 @@ class BreezeClient:
             return False, e.read().decode("utf-8", "replace")
         except Exception as e:
             return False, str(e)
+
+
+def clean_and_replace_voice(keep_voice_name, client=None):
+    """单音色策略：确保 Breeze 内存及本地磁盘 voices 目录中只保留唯一定义的音色，删除所有旧音色。"""
+    if client is None:
+        client = BreezeClient()
+    
+    # 1. Breeze API 删除旧音色
+    try:
+        voices = client.get_voices()
+        if isinstance(voices, list):
+            for v in voices:
+                vid = v.get("id") or v.get("name")
+                if vid and vid != keep_voice_name:
+                    client.delete_voice(vid)
+    except Exception:
+        pass
+
+    # 2. 本地磁盘 voices 目录删除旧 .breeze 文件
+    try:
+        env = check_breeze_environment()
+        if env.get("install_path"):
+            vdir = os.path.join(env["install_path"], "voices")
+            if os.path.exists(vdir):
+                for f in os.listdir(vdir):
+                    if f.endswith(".breeze") and f != f"{keep_voice_name}.breeze":
+                        try:
+                            os.remove(os.path.join(vdir, f))
+                        except Exception:
+                            pass
+    except Exception:
+        pass
 
 
 def get_active_persona_info():
@@ -837,6 +884,16 @@ def get_active_persona_info():
                         prompt = persona_map["default"]
 
                 if active_id and prompt:
+                    # 单性格策略：确保 AstrBot 在线人格库仅保留当前唯一自定义人格，清理其它历史性格
+                    if active_id != "default":
+                        for p in personas_list:
+                            pid = p.get("persona_id")
+                            if pid and pid != active_id and pid != "default":
+                                try:
+                                    client.call("DELETE", f"/personas/{urllib.parse.quote(pid, safe='')}")
+                                except Exception:
+                                    pass
+
                     return {
                         "persona_id": active_id,
                         "prompt": prompt,
@@ -902,6 +959,11 @@ def get_active_persona_info():
                     if row and row[0]:
                         active_id = "default"
                         prompt = row[0]
+
+            # 单性格策略：确保本地 SQLite 数据库中只保留当前这唯一个人格，清理其它历史性格
+            if active_id and active_id != "default":
+                cur.execute("DELETE FROM personas WHERE persona_id != ? AND persona_id != 'default'", (active_id,))
+                conn.commit()
 
             conn.close()
         except Exception:

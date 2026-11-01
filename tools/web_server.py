@@ -49,6 +49,7 @@ from web_adapter import (
     check_plugins_completeness,
     save_persona_offline,
     find_ffmpeg_path,
+    clean_and_replace_voice,
     AstrBotClient,
     BreezeClient,
     get_active_persona_info,
@@ -179,6 +180,91 @@ class ConfigRequestHandler(BaseHTTPRequestHandler):
         self.send_header("Content-Length", str(len(content)))
         self.end_headers()
         self.wfile.write(content)
+
+    def _apply_voice_to_astrbot(self, voice_name):
+        """单音色策略：将指定音色绑定为 AstrBot 唯一默认 TTS 发音人，并清理其它 TTS 提供商。"""
+        tts_provider_id = f"Breeze语音-{voice_name}"
+        conf = {
+            "id": tts_provider_id,
+            "type": "openai_tts_api",
+            "provider": "openai",
+            "provider_type": "text_to_speech",
+            "enable": True,
+            "api_key": "unused",
+            "api_base": "http://127.0.0.1:8137/v1",
+            "model": "tts-1",
+            "openai-tts-voice": voice_name,
+            "timeout": 180,
+            "proxy": ""
+        }
+
+        auto_detect_astrbot()
+        client = STATE.get("astrbot_client")
+        if client and client.token:
+            try:
+                # 1. 查找并清理 AstrBot 在线配置中所有其它旧 text_to_speech 提供商
+                prov_resp = client.call("GET", "/providers")
+                if client.is_ok(prov_resp):
+                    data = prov_resp.get("data", {})
+                    p_list = data.get("providers", []) if isinstance(data, dict) else (data if isinstance(data, list) else [])
+                    for p in p_list:
+                        if isinstance(p, dict) and p.get("provider_type") == "text_to_speech" and p.get("id") != tts_provider_id:
+                            try:
+                                client.call("DELETE", f"/providers/{urllib.parse.quote(p['id'], safe='')}")
+                            except Exception:
+                                pass
+
+                # 2. 注册或更新当前唯一 TTS 提供商
+                pid = urllib.parse.quote(tts_provider_id, safe="")
+                cur = client.call("GET", f"/providers/{pid}")
+                if client.is_ok(cur) and isinstance(cur.get("data"), dict) and cur["data"].get("id") == tts_provider_id:
+                    merged = {**cur["data"], **conf}
+                    client.call("PUT", f"/providers/{pid}", {"config": merged})
+                else:
+                    client.call("POST", "/providers", {"config": conf})
+
+                # 3. 设置默认配置中的 provider_tts_settings
+                cfg = client.get_default_config()
+                if cfg:
+                    tts = cfg.setdefault("provider_tts_settings", {})
+                    tts.update({
+                        "enable": True,
+                        "provider_id": tts_provider_id,
+                        "trigger_probability": 0.33
+                    })
+                    client.update_default_config(cfg)
+            except Exception:
+                pass
+
+        # 4. 落盘更新 cmd_config.json（清理旧 TTS 提供商，只保留当前唯一定义）
+        instances = detect_astrbot_instances()
+        if instances and instances[0].get("dir"):
+            cand = os.path.join(instances[0]["dir"], "data", "cmd_config.json")
+            if not os.path.exists(cand):
+                cand = os.path.join(instances[0]["dir"], "core", "data", "cmd_config.json")
+            if os.path.exists(cand):
+                try:
+                    cfg_disk = json.load(open(cand, encoding="utf-8-sig"))
+                    providers = cfg_disk.setdefault("provider", [])
+                    filtered = [p for p in providers if not (isinstance(p, dict) and p.get("provider_type") == "text_to_speech" and p.get("id") != tts_provider_id)]
+                    exist_p = next((p for p in filtered if p.get("id") == tts_provider_id), None)
+                    if exist_p:
+                        exist_p.update(conf)
+                    else:
+                        filtered.append(conf)
+                    cfg_disk["provider"] = filtered
+                    tts_s = cfg_disk.setdefault("provider_tts_settings", {})
+                    tts_s.update({
+                        "enable": True,
+                        "provider_id": tts_provider_id,
+                        "trigger_probability": 0.33
+                    })
+                    with open(cand, "w", encoding="utf-8") as f:
+                        json.dump(cfg_disk, f, ensure_ascii=False, indent=2)
+                except Exception:
+                    pass
+
+        STATE["voice_enabled"] = True
 
     def do_GET(self):
         parsed = urllib.parse.urlparse(self.path)
@@ -339,6 +425,14 @@ class ConfigRequestHandler(BaseHTTPRequestHandler):
                         if client.is_ok(p_conf):
                             data = (p_conf.get("data") or {}).get("provider", p_conf.get("data", {}))
                             current_tts_voice = data.get("openai-tts-voice", current_tts_voice)
+
+            # 单音色策略：若音色库中有多于 1 种音色，自动清理历史旧音色，仅保留当前生效音色
+            if len(voices_list) > 1:
+                clean_and_replace_voice(current_tts_voice, breeze)
+                voices_list = [v for v in voices_list if (v.get("id") == current_tts_voice or v.get("name") == current_tts_voice)]
+                if not voices_list and raw_voices:
+                    first = raw_voices[0]
+                    voices_list = [{"id": first.get("id") or first.get("name"), "name": first.get("name") or first.get("id"), "description": first.get("description", "")}]
 
             self.send_json({
                 "ok": True,
@@ -625,7 +719,7 @@ class ConfigRequestHandler(BaseHTTPRequestHandler):
                 self.send_json({"ok": False, "message": str(e), "logs": logs}, 500)
             return
 
-        # 3. 保存性格到 AstrBot
+        # 3. 保存性格到 AstrBot (单性格策略：自动替换并清理之前的旧性格)
         if path == "/api/persona/save":
             length = int(self.headers.get("Content-Length", 0))
             body = json.loads(self.rfile.read(length).decode("utf-8")) if length else {}
@@ -641,6 +735,20 @@ class ConfigRequestHandler(BaseHTTPRequestHandler):
             client = STATE.get("astrbot_client")
             online_saved = False
             if client and client.token:
+                # 单一性格策略：清理在线除当前 pid 和 default 外的所有历史旧性格
+                try:
+                    p_all = client.call("GET", "/personas")
+                    if client.is_ok(p_all) and isinstance(p_all.get("data"), list):
+                        for old_p in p_all["data"]:
+                            old_id = old_p.get("persona_id")
+                            if old_id and old_id != pid and old_id != "default":
+                                try:
+                                    client.call("DELETE", f"/personas/{urllib.parse.quote(old_id, safe='')}")
+                                except Exception:
+                                    pass
+                except Exception:
+                    pass
+
                 qid = urllib.parse.quote(pid, safe="")
                 cur = client.call("GET", f"/personas/{qid}")
                 if client.is_ok(cur) and isinstance(cur.get("data"), dict) and cur["data"].get("persona_id") == pid:
@@ -671,12 +779,12 @@ class ConfigRequestHandler(BaseHTTPRequestHandler):
             offline_ok, offline_msg = save_persona_offline(pid, prompt_final)
 
             if online_saved or offline_ok:
-                self.send_json({"ok": True, "message": f"性格「{pid}」已成功保存并实时同步到 AstrBot！"})
+                self.send_json({"ok": True, "message": f"性格「{pid}」已成功保存并替换之前的人格，在 AstrBot 中实时生效！"})
             else:
                 self.send_json({"ok": False, "message": f"保存失败: {offline_msg}"}, 500)
             return
 
-        # 4. Breeze 声音克隆
+        # 4. Breeze 声音克隆 (单音色策略：自动替换旧音色)
         if path == "/api/voice/clone":
             try:
                 fields, files, all_files = parse_multipart(self.rfile, self.headers)
@@ -698,9 +806,15 @@ class ConfigRequestHandler(BaseHTTPRequestHandler):
                 processed_bytes, out_name = convert_to_wav(raw_bytes, file_item.get("filename", "audio.wav"))
 
                 breeze = STATE["breeze_client"]
+
+                # 单一音色策略：克隆前清理 Breeze 与磁盘上的所有旧音色
+                clean_and_replace_voice(voice_name, breeze)
+
                 ok, msg = breeze.clone_voice(voice_name, processed_bytes, out_name, ref_text, f"克隆:{voice_name}")
                 if ok:
-                    self.send_json({"ok": True, "message": f"音色 [{voice_name}] 克隆成功！"})
+                    # 自动绑定到 AstrBot，并清理 AstrBot 中旧的 TTS 提供商
+                    self._apply_voice_to_astrbot(voice_name)
+                    self.send_json({"ok": True, "message": f"音色 [{voice_name}] 克隆成功，已自动替换之前的旧音色并生效！", "voice_name": voice_name})
                 else:
                     self.send_json({"ok": False, "message": f"Breeze 报错: {msg}"}, 500)
             except Exception as e:
@@ -728,78 +842,13 @@ class ConfigRequestHandler(BaseHTTPRequestHandler):
                 self.send_json({"ok": False, "message": f"试听合成异常: {e}"}, 500)
             return
 
-        # 6. 绑定 Breeze 音色到 AstrBot
+        # 6. 绑定 Breeze 音色到 AstrBot (单音色策略)
         if path == "/api/voice/apply":
             length = int(self.headers.get("Content-Length", 0))
             body = json.loads(self.rfile.read(length).decode("utf-8")) if length else {}
             voice_name = body.get("voice_name", "dafeiyu")
-
-            tts_provider_id = f"Breeze语音-{voice_name}"
-            conf = {
-                "id": tts_provider_id,
-                "type": "openai_tts_api",
-                "provider": "openai",
-                "provider_type": "text_to_speech",
-                "enable": True,
-                "api_key": "unused",
-                "api_base": "http://127.0.0.1:8137/v1",
-                "model": "tts-1",
-                "openai-tts-voice": voice_name,
-                "timeout": 180,
-                "proxy": ""
-            }
-
-            client = STATE.get("astrbot_client")
-            if client and client.token:
-                try:
-                    pid = urllib.parse.quote(tts_provider_id, safe="")
-                    cur = client.call("GET", f"/providers/{pid}")
-                    if client.is_ok(cur) and isinstance(cur.get("data"), dict) and cur["data"].get("id") == tts_provider_id:
-                        merged = {**cur["data"], **conf}
-                        client.call("PUT", f"/providers/{pid}", {"config": merged})
-                    else:
-                        client.call("POST", "/providers", {"config": conf})
-
-                    cfg = client.get_default_config()
-                    if cfg:
-                        tts = cfg.setdefault("provider_tts_settings", {})
-                        tts.update({
-                            "enable": True,
-                            "provider_id": tts_provider_id,
-                            "trigger_probability": 0.33
-                        })
-                        client.update_default_config(cfg)
-                except Exception:
-                    pass
-
-            # 无论在线与否，直接落盘更新 cmd_config.json 保证持久生效
-            instances = detect_astrbot_instances()
-            if instances and instances[0].get("dir"):
-                cand = os.path.join(instances[0]["dir"], "data", "cmd_config.json")
-                if not os.path.exists(cand):
-                    cand = os.path.join(instances[0]["dir"], "core", "data", "cmd_config.json")
-                if os.path.exists(cand):
-                    try:
-                        cfg_disk = json.load(open(cand, encoding="utf-8-sig"))
-                        providers = cfg_disk.setdefault("provider", [])
-                        exist_p = next((p for p in providers if p.get("id") == tts_provider_id or p.get("provider_type") == "text_to_speech"), None)
-                        if exist_p:
-                            exist_p.update(conf)
-                        else:
-                            providers.append(conf)
-                        tts_s = cfg_disk.setdefault("provider_tts_settings", {})
-                        tts_s.update({
-                            "enable": True,
-                            "provider_id": tts_provider_id,
-                            "trigger_probability": 0.33
-                        })
-                        with open(cand, "w", encoding="utf-8") as f:
-                            json.dump(cfg_disk, f, ensure_ascii=False, indent=2)
-                    except Exception:
-                        pass
-
-            STATE["voice_enabled"] = True
-            self.send_json({"ok": True, "message": f"已成功将音色 [{voice_name}] 设为 AstrBot 默认语音！"})
+            self._apply_voice_to_astrbot(voice_name)
+            self.send_json({"ok": True, "message": f"已成功将音色 [{voice_name}] 设为 AstrBot 唯一默认语音！"})
             return
 
         # 6.01 导入与优化自定义表情包

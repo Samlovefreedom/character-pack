@@ -486,7 +486,7 @@
             <strong>AstrBot 当前生效人格：</strong>
             <span id="active-persona-name" style="font-weight: 700; color: #166534;">正在读取...</span>
             <div style="font-size: 12px; color: #15803d; margin-top: 2px;">
-              系统已与 AstrBot 实时双向同步，在此修改后点击保存即可直接写入并生效到 AstrBot。
+              系统仅保留唯一性格并与 AstrBot 实时双向同步，在此修改保存将直接替换旧性格并实时生效。
             </div>
           </div>
         </div>
@@ -512,7 +512,7 @@
       <div class="card">
         <div class="card-title">📖 角色性格 Prompt 设定</div>
         <div class="card-desc">
-          您可以自由微调角色的说话习惯、长短及语气。修改完成后点击保存，将直接写入 AstrBot，在 QQ 中发送 <code>/reset</code> 即可使新人格生效！
+          您可以自由微调角色的说话习惯、长短及语气。修改完成后点击保存，将直接替换之前的人格并写入 AstrBot，在 QQ 中发送 <code>/reset</code> 即可使新人格生效！
         </div>
 
         <div class="grid-2">
@@ -536,7 +536,7 @@
 
         <div style="display: flex; gap: 12px; flex-wrap: wrap;">
           <button class="btn btn-primary" onclick="savePersonaToAstrBot()">
-            <span>✨ 一键保存并生效此性格到 AstrBot</span>
+            <span>✨ 一键保存并替换当前性格到 AstrBot</span>
           </button>
           <button class="btn btn-outline" onclick="loadActivePersona(true)">
             <span>🔄 重新从 AstrBot 检测并同步</span>
@@ -617,13 +617,13 @@
         <!-- 条件全部就绪后解锁的声音克隆与试听绑定区 -->
         <div id="voice-ready-area" style="display: none;">
 
-          <!-- 已有音色快速挑选与试听 -->
+          <!-- 已有音色快速挑选与试听 (单音色模式) -->
           <div class="card">
             <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:12px;">
               <div>
-                <div class="card-title" style="margin-bottom:4px;">📚 本地已有音色库</div>
+                <div class="card-title" style="margin-bottom:4px;">📚 本地已有音色库 (单音色模式)</div>
                 <div class="card-desc" style="margin-bottom:0;">
-                  检测到本地 Breeze 中已注册的音色。您可以直接<strong>在线试听</strong>或一键设为 AstrBot 发音人。
+                  系统当前仅保留<strong>唯一生效音色</strong>。在此可直接在线试听；若导入参考音频制作新音色，将<strong>自动替换</strong>此音色。
                 </div>
               </div>
               <button class="btn btn-sm btn-outline" onclick="loadVoiceList()">🔄 刷新音色</button>
@@ -637,7 +637,7 @@
           <!-- 录音模仿克隆区 -->
           <div class="card">
             <div class="card-title">🎙️ 导入参考音频进行声音克隆与模仿</div>
-            <div class="card-desc">拖入一段 5~15 秒清晰人声录音，录入原话台词，即可秒级克隆！</div>
+            <div class="card-desc">导入一段 5~15 秒清晰人声录音，录入原话台词，克隆成功后将<strong>自动替换当前已有音色</strong>并直接生效！</div>
 
             <div class="form-group">
               <label class="form-label">音色名称 (Voice ID)</label>
@@ -661,7 +661,7 @@
 
             <div style="display: flex; gap: 12px; margin-top: 14px;">
               <button class="btn btn-primary" id="btn-clone-voice" onclick="startCloneVoice()">
-                <span>⚡ 开始克隆并注册音色</span>
+                <span>⚡ 开始克隆并替换当前音色</span>
               </button>
             </div>
 
@@ -1291,7 +1291,7 @@
         const res = await fetch('/api/voice/clone', { method: 'POST', body: fd });
         const out = await res.json();
         if (out.ok) {
-          showToast("🎉 音色 [" + name + "] 克隆成功！您可在下方直接试听或绑定", "success", 5000);
+          showToast("🎉 音色 [" + name + "] 克隆成功，已自动替换之前的旧音色并生效！", "success", 5000);
           loadVoiceList();
         } else {
           showToast("❌ 克隆失败: " + out.message, "error", 5000);
@@ -1300,7 +1300,7 @@
         showToast("克隆请求异常: " + e.message, "error");
       } finally {
         btn.disabled = false;
-        btn.innerText = "⚡ 开始克隆并注册音色";
+        btn.innerText = "⚡ 开始克隆并替换当前音色";
       }
     }
 
@@ -1381,7 +1381,7 @@
       }
     }
 
-    // 读取本地音色库并渲染（突出当前生效音色）
+    // 读取本地音色库并渲染（单音色模式）
     async function loadVoiceList() {
       const container = document.getElementById('existing-voices-container');
       try {
@@ -1396,29 +1396,28 @@
         const currentActive = out.current_active_voice || "";
 
         if (voices.length === 0) {
-          container.innerHTML = '<div style="color:var(--text-muted); font-size:13px;">暂无已保存音色，请在下方上传参考音频制作。</div>';
+          container.innerHTML = '<div style="color:var(--text-muted); font-size:13px;">暂无已保存音色，请在下方导入参考音频制作。</div>';
           return;
         }
 
         container.innerHTML = '';
         voices.forEach(v => {
           const card = document.createElement('div');
-          const isAct = (v.name === currentActive || v.id === currentActive);
-          card.className = 'item-card' + (isAct ? ' active-item' : '');
+          card.className = 'item-card active-item';
           card.innerHTML = `
             <div>
               <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
                 <span class="item-title">🎙️ ${v.name}</span>
-                ${isAct ? '<span class="badge badge-success">⭐ 当前生效中</span>' : ''}
+                <span class="badge badge-success">⭐ 当前唯一生效音色</span>
               </div>
-              <div style="font-size:12px; color:var(--text-muted);">${v.description || '本地已注册音色'}</div>
+              <div style="font-size:12px; color:var(--text-muted);">${v.description || '当前默认发音人'}</div>
             </div>
             <div style="display:flex; gap:8px; margin-top:8px;">
               <button class="btn btn-sm btn-outline" id="audition-btn-${v.name}" onclick="previewVoiceSpeech('${v.name}', this)">
-                <span>🔊 试听</span>
+                <span>🔊 在线试听</span>
               </button>
-              <button class="btn btn-sm ${isAct ? 'btn-outline' : 'btn-primary'}" onclick="applyVoiceToAstrBot('${v.name}')">
-                <span>${isAct ? '已绑定' : '⭐ 设为发音人'}</span>
+              <button class="btn btn-sm btn-outline" style="background:#f0fdf4; color:#15803d; border-color:#86efac;" onclick="applyVoiceToAstrBot('${v.name}')">
+                <span>✔ 默认发音人</span>
               </button>
             </div>
           `;
