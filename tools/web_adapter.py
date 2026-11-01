@@ -296,22 +296,48 @@ def sync_napcat_and_astrbot(client, nap_info=None):
     return False, "更新 AstrBot 配置失败"
 
 
+_CACHED_ASTRBOT_URL = None
+
+
 def scan_active_astrbot_url():
     """精确快速扫描当前活跃的 AstrBot 端口。自动适应 AstrBot 启动器动态分配的任意端口。"""
+    global _CACHED_ASTRBOT_URL
+    if _CACHED_ASTRBOT_URL and test_astrbot_url(_CACHED_ASTRBOT_URL):
+        return _CACHED_ASTRBOT_URL
+
+    # 1. 优先通过系统进程极速定位 AstrBot 正在监听的端口 (毫秒级响应)
+    try:
+        import psutil
+        for p in psutil.process_iter(['pid', 'name', 'cmdline']):
+            try:
+                cmd = " ".join(p.info['cmdline'] or []).lower()
+                if "astrbot" in cmd and ("python" in p.info['name'].lower() or "main.py" in cmd):
+                    for c in p.connections():
+                        if c.status == "LISTEN" and c.laddr and c.laddr.port:
+                            port_cand = c.laddr.port
+                            cand_url = f"http://127.0.0.1:{port_cand}"
+                            if test_astrbot_url(cand_url):
+                                _CACHED_ASTRBOT_URL = cand_url
+                                return cand_url
+            except Exception:
+                continue
+    except Exception:
+        pass
+
     candidate_ports = []
     
-    # 1. 尝试从启动器实例配置端口
+    # 2. 尝试从启动器实例配置端口
     instances = detect_astrbot_instances()
     for inst in instances:
         if inst.get("port") and inst["port"] not in candidate_ports:
             candidate_ports.append(inst["port"])
 
-    # 2. 常用端口与默认端口
+    # 3. 常用端口与默认端口
     for p in [16979, 17615, 6185, 17614, 17616, 6186, 6187]:
         if p not in candidate_ports:
             candidate_ports.append(p)
 
-    # 3. 扫描本机所有正在监听的 TCP 端口 (AstrBot 启动器会动态分配 10000-65535 的端口)
+    # 4. 扫描本机所有正在监听的 TCP 端口 (AstrBot 启动器会动态分配 10000-65535 的端口)
     try:
         if os.name == "nt":
             out = subprocess.run(["netstat", "-ano", "-n", "-p", "TCP"], capture_output=True, text=True, timeout=1.5, errors="replace").stdout
@@ -331,6 +357,7 @@ def scan_active_astrbot_url():
     for p in candidate_ports:
         url = f"http://127.0.0.1:{p}"
         if test_astrbot_url(url):
+            _CACHED_ASTRBOT_URL = url
             return url
     return "http://127.0.0.1:6185"
 
@@ -747,62 +774,144 @@ class BreezeClient:
 
 
 def get_active_persona_info():
-    """获取 AstrBot 当前生效的性格名称、提示词以及绑定的主人 QQ。保证不会每次都重置到初始模版。"""
+    """获取 AstrBot 当前生效的性格名称、提示词以及绑定的主人 QQ。
+    保证与 AstrBot 运行态和数据库严格双向同步，且无任何本地硬编码兜底模板。
+    """
     instances = detect_astrbot_instances()
-    if not instances:
-        return {"persona_id": "大肥鱼", "prompt": "", "owner_qq": "", "is_custom": False}
-
-    inst_dir = instances[0]["dir"]
+    inst_dir = instances[0]["dir"] if instances else ""
     db_path = None
     cfg_path = None
-    for sub in [os.path.join(inst_dir, "core", "data"), os.path.join(inst_dir, "data")]:
-        db_cand = os.path.join(sub, "data_v4.db")
-        cfg_cand = os.path.join(sub, "cmd_config.json")
-        if os.path.exists(db_cand): db_path = db_cand
-        if os.path.exists(cfg_cand): cfg_path = cfg_cand
+    if inst_dir:
+        for sub in [os.path.join(inst_dir, "core", "data"), os.path.join(inst_dir, "data")]:
+            db_cand = os.path.join(sub, "data_v4.db")
+            cfg_cand = os.path.join(sub, "cmd_config.json")
+            if os.path.exists(db_cand): db_path = db_cand
+            if os.path.exists(cfg_cand): cfg_path = cfg_cand
 
-    active_id = "大肥鱼"
+    active_id = ""
+    prompt = ""
     owner_qq = ""
+
+    # 1. 优先尝试从在线活跃的 AstrBot 实例 API 读取（实时反映 AstrBot 运行态）
+    try:
+        active_url = scan_active_astrbot_url()
+        client = AstrBotClient(active_url)
+        if client and client.token:
+            cfg = client.get_default_config()
+            if cfg:
+                active_id = cfg.get("agent_runner", {}).get("config", {}).get("persona", {}).get("persona_id") or ""
+                admins = cfg.get("admins_id", [])
+                wl = cfg.get("platform_settings", {}).get("id_whitelist", [])
+                if admins:
+                    owner_qq = str(admins[0])
+                elif wl:
+                    m = re.search(r"\d{5,12}", str(wl[0]))
+                    if m: owner_qq = m.group(0)
+
+            # 获取在线人格列表
+            p_resp = client.call("GET", "/personas")
+            if client.is_ok(p_resp) and isinstance(p_resp.get("data"), list):
+                personas_list = p_resp["data"]
+                persona_map = {p.get("persona_id"): p.get("system_prompt", "") for p in personas_list if isinstance(p, dict)}
+                
+                # 如果 active_id 存在于人格库中，直接取其提示词
+                if active_id and active_id in persona_map:
+                    prompt = persona_map[active_id]
+                else:
+                    # 如果 active_id 指向不存在的人格，或未指定 active_id：
+                    # 寻找第一个非 default 的自定义人格
+                    custom_personas = [p for p in personas_list if p.get("persona_id") and p.get("persona_id") != "default"]
+                    if custom_personas:
+                        target = custom_personas[0]
+                        active_id = target["persona_id"]
+                        prompt = target.get("system_prompt", "")
+                        # 自动纠偏同步到 AstrBot 在线配置
+                        if cfg:
+                            if "agent_runner" not in cfg: cfg["agent_runner"] = {}
+                            if "config" not in cfg["agent_runner"]: cfg["agent_runner"]["config"] = {}
+                            if "persona" not in cfg["agent_runner"]["config"]: cfg["agent_runner"]["config"]["persona"] = {}
+                            cfg["agent_runner"]["config"]["persona"]["persona_id"] = active_id
+                            client.update_default_config(cfg)
+                    elif "default" in persona_map:
+                        active_id = "default"
+                        prompt = persona_map["default"]
+
+                if active_id and prompt:
+                    return {
+                        "persona_id": active_id,
+                        "prompt": prompt,
+                        "owner_qq": owner_qq,
+                        "is_custom": bool(prompt and active_id != "default")
+                    }
+    except Exception:
+        pass
+
+    # 2. 备选方案：直接读取 AstrBot SQLite 数据库 (data_v4.db) 与 cmd_config.json
     if cfg_path and os.path.exists(cfg_path):
         try:
-            cfg = json.load(open(cfg_path, encoding="utf-8-sig"))
-            active_id = cfg.get("agent_runner", {}).get("config", {}).get("persona", {}).get("persona_id") or "大肥鱼"
-            admins = cfg.get("admins_id", [])
-            wl = cfg.get("platform_settings", {}).get("id_whitelist", [])
-            if admins:
-                owner_qq = str(admins[0])
-            elif wl:
-                m = re.search(r"\d{5,12}", str(wl[0]))
-                if m: owner_qq = m.group(0)
+            with open(cfg_path, encoding="utf-8-sig") as f:
+                cfg = json.load(f)
+            if not active_id:
+                active_id = cfg.get("agent_runner", {}).get("config", {}).get("persona", {}).get("persona_id") or ""
+            if not owner_qq:
+                admins = cfg.get("admins_id", [])
+                wl = cfg.get("platform_settings", {}).get("id_whitelist", [])
+                if admins:
+                    owner_qq = str(admins[0])
+                elif wl:
+                    m = re.search(r"\d{5,12}", str(wl[0]))
+                    if m: owner_qq = m.group(0)
         except Exception:
             pass
 
-    prompt = ""
     if db_path and os.path.exists(db_path):
         try:
             import sqlite3
             conn = sqlite3.connect(db_path, timeout=5.0)
             cur = conn.cursor()
-            cur.execute("SELECT system_prompt FROM personas WHERE persona_id = ?", (active_id,))
-            row = cur.fetchone()
-            if row and row[0]:
-                prompt = row[0]
+            
+            # 首先查指定 active_id
+            if active_id:
+                cur.execute("SELECT system_prompt FROM personas WHERE persona_id = ?", (active_id,))
+                row = cur.fetchone()
+                if row and row[0]:
+                    prompt = row[0]
+
+            # 若未匹配到（如配置中的名字在库中不存在），自动查找第一个自定义人格
+            if not prompt:
+                cur.execute("SELECT persona_id, system_prompt FROM personas WHERE persona_id != 'default' ORDER BY updated_at DESC, id DESC LIMIT 1")
+                row = cur.fetchone()
+                if row and row[0]:
+                    active_id = row[0]
+                    prompt = row[1] or ""
+                    # 同步纠偏写回 cmd_config.json
+                    if cfg_path and os.path.exists(cfg_path):
+                        try:
+                            with open(cfg_path, "r", encoding="utf-8-sig") as f:
+                                cfg_data = json.load(f)
+                            ar = cfg_data.setdefault("agent_runner", {}).setdefault("config", {}).setdefault("persona", {})
+                            ar["persona_id"] = active_id
+                            with open(cfg_path, "w", encoding="utf-8") as f:
+                                json.dump(cfg_data, f, ensure_ascii=False, indent=2)
+                        except Exception:
+                            pass
+                else:
+                    # 只有 default 人格
+                    cur.execute("SELECT system_prompt FROM personas WHERE persona_id = 'default'")
+                    row = cur.fetchone()
+                    if row and row[0]:
+                        active_id = "default"
+                        prompt = row[0]
+
             conn.close()
         except Exception:
             pass
 
-    # 若数据库尚未存入该性格，回退至大肥鱼参考范式
-    if not prompt:
-        ref_file = os.path.join(PACK_ROOT, "persona", "大肥鱼.md")
-        if os.path.exists(ref_file):
-            with open(ref_file, "r", encoding="utf-8") as f:
-                prompt = f.read()
-
     return {
-        "persona_id": active_id,
+        "persona_id": active_id or "default",
         "prompt": prompt,
         "owner_qq": owner_qq,
-        "is_custom": bool(prompt and active_id != "大肥鱼")
+        "is_custom": bool(prompt and active_id != "default")
     }
 
 

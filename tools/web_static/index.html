@@ -486,12 +486,12 @@
             <strong>AstrBot 当前生效人格：</strong>
             <span id="active-persona-name" style="font-weight: 700; color: #166534;">正在读取...</span>
             <div style="font-size: 12px; color: #15803d; margin-top: 2px;">
-              系统已为您自动载入当前正在运行的人格与设定，修改后点击下方保存即可立即生效。
+              系统已与 AstrBot 实时双向同步，在此修改后点击保存即可直接写入并生效到 AstrBot。
             </div>
           </div>
         </div>
-        <button class="btn btn-sm btn-outline" onclick="loadReferencePersona(true)" style="background: #fff; white-space: nowrap;">
-          <span>📋 载入初始「大肥鱼」范式</span>
+        <button class="btn btn-sm btn-outline" onclick="loadActivePersona(true)" style="background: #fff; white-space: nowrap;">
+          <span>🔄 立即从 AstrBot 同步</span>
         </button>
       </div>
 
@@ -512,7 +512,7 @@
       <div class="card">
         <div class="card-title">📖 角色性格 Prompt 设定</div>
         <div class="card-desc">
-          您可以自由微调角色的说话习惯、长短及语气。修改完成后点击保存，在 QQ 中发送 <code>/reset</code> 即可使新人格生效！
+          您可以自由微调角色的说话习惯、长短及语气。修改完成后点击保存，将直接写入 AstrBot，在 QQ 中发送 <code>/reset</code> 即可使新人格生效！
         </div>
 
         <div class="grid-2">
@@ -536,10 +536,10 @@
 
         <div style="display: flex; gap: 12px; flex-wrap: wrap;">
           <button class="btn btn-primary" onclick="savePersonaToAstrBot()">
-            <span>✨ 一键保存并生效此性格</span>
+            <span>✨ 一键保存并生效此性格到 AstrBot</span>
           </button>
-          <button class="btn btn-outline" onclick="loadReferencePersona(true)">
-            <span>📋 载入初始「大肥鱼」参考范式</span>
+          <button class="btn btn-outline" onclick="loadActivePersona(true)">
+            <span>🔄 重新从 AstrBot 检测并同步</span>
           </button>
           <button class="btn btn-outline" onclick="exportPersonaToLocal()">
             <span>💾 另存为本地文件 (.md)</span>
@@ -1057,15 +1057,15 @@
     }
 
     // ===== 板块 1: 性格定制 =====
-    // 加载当前生效的性格（优先显示已存在性格，不重置到初始范式）
-    async function loadActivePersona() {
+    // 加载 AstrBot 当前生效的性格，实时保持双向同步（绝不回退至任何备用模板）
+    async function loadActivePersona(userTriggered = false) {
       try {
         const res = await fetch('/api/persona/current');
         if (res.ok) {
           const out = await res.json();
           const info = (out && out.data) ? out.data : out;
-          if (out && out.ok && info && (info.persona_id || info.prompt)) {
-            const pid = info.persona_id || '大肥鱼';
+          if (out && out.ok && info) {
+            const pid = info.persona_id || 'default';
             document.getElementById('persona-id').value = pid;
             document.getElementById('persona-content').value = info.prompt || '';
             document.getElementById('active-persona-name').innerText = `【${pid}】`;
@@ -1073,41 +1073,26 @@
               document.getElementById('owner-qq-input').value = info.owner_qq;
               document.getElementById('persona-owner-display').value = info.owner_qq;
             }
+            if (userTriggered) {
+              showToast(`已从 AstrBot 成功同步当前生效性格【${pid}】`, "success");
+            }
             return;
           }
         }
-      } catch (e) {
-        console.warn("读取当前生效人设失败，将载入参考范式", e);
-      }
-      // 若无已生效配置，回退载入大肥鱼
-      loadReferencePersona(false);
-    }
-
-    // 加载参考案例 (大肥鱼)
-    async function loadReferencePersona(confirmReplace = false) {
-      if (confirmReplace) {
-        const currentPrompt = document.getElementById('persona-content').value.trim();
-        if (currentPrompt && !confirm("确定要载入初始「大肥鱼」参考范式吗？当前编辑区的内容将被覆盖。")) {
-          return;
-        }
-      }
-
-      try {
-        const res = await fetch('/api/persona/reference');
-        const out = await res.json();
-        if (out.ok) {
-          document.getElementById('persona-id').value = out.persona_id || "大肥鱼";
-          document.getElementById('persona-content').value = out.prompt || "";
-          showToast("已成功载入「大肥鱼」参考范式", "info");
+        if (userTriggered) {
+          showToast("未能获取到 AstrBot 性格信息", "warning");
         }
       } catch (e) {
-        showToast("加载参考范式失败: " + e.message, "error");
+        console.warn("读取 AstrBot 当前生效性格失败", e);
+        if (userTriggered) {
+          showToast("同步 AstrBot 性格失败: " + e.message, "error");
+        }
       }
     }
 
-    // 保存性格到 AstrBot
+    // 保存性格到 AstrBot（直接写入 AstrBot 运行态与持久化配置）
     async function savePersonaToAstrBot() {
-      const persona_id = document.getElementById('persona-id').value.trim() || '大肥鱼';
+      const persona_id = document.getElementById('persona-id').value.trim() || 'default';
       const prompt = document.getElementById('persona-content').value.trim();
       const owner_qq = document.getElementById('owner-qq-input').value.trim();
 
@@ -1125,7 +1110,7 @@
         const out = await res.json();
         if (out.ok) {
           document.getElementById('active-persona-name').innerText = `【${persona_id}】`;
-          showToast(`🎉 人格【${persona_id}】已成功生效！在 QQ 发送 /reset 即可刷新。`, "success", 5000);
+          showToast(`🎉 人格【${persona_id}】已成功同步至 AstrBot！在 QQ 发送 /reset 即可刷新。`, "success", 5000);
         } else {
           showToast("❌ " + out.message, "error", 5000);
         }

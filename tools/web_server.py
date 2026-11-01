@@ -373,18 +373,14 @@ class ConfigRequestHandler(BaseHTTPRequestHandler):
             self.send_json({"ok": True, "data": comp})
             return
 
-        # 单一权威参考案例：大肥鱼
+        # 备用模板已按要求彻底移除，直接返回 AstrBot 真实当前性格
         if path == "/api/persona/reference":
-            ref_path = os.path.join(PACK_ROOT, "persona", "大肥鱼.md")
-            content = ""
-            if os.path.exists(ref_path):
-                with open(ref_path, "r", encoding="utf-8") as f:
-                    content = f.read()
+            p_info = get_active_persona_info()
             self.send_json({
                 "ok": True,
-                "persona_id": "大肥鱼",
-                "name": "大肥鱼 (傲娇软萌吃货AI少女)",
-                "prompt": content
+                "persona_id": p_info.get("persona_id", "default"),
+                "name": p_info.get("persona_id", "default"),
+                "prompt": p_info.get("prompt", "")
             })
             return
 
@@ -633,13 +629,15 @@ class ConfigRequestHandler(BaseHTTPRequestHandler):
         if path == "/api/persona/save":
             length = int(self.headers.get("Content-Length", 0))
             body = json.loads(self.rfile.read(length).decode("utf-8")) if length else {}
-            pid = body.get("persona_id", "大肥鱼")
+            pid = body.get("persona_id", "").strip() or "default"
             prompt = body.get("prompt", "")
             owner_qq = body.get("owner_qq") or STATE.get("owner_qq") or ""
             if owner_qq:
                 STATE["owner_qq"] = owner_qq
             prompt_final = prompt.replace("{OWNER_QQ}", owner_qq)
 
+            # 确保 client 实例与 AstrBot 活跃端口严格对齐
+            auto_detect_astrbot()
             client = STATE.get("astrbot_client")
             online_saved = False
             if client and client.token:
@@ -660,15 +658,22 @@ class ConfigRequestHandler(BaseHTTPRequestHandler):
                         if "config" not in cfg["agent_runner"]: cfg["agent_runner"]["config"] = {}
                         if "persona" not in cfg["agent_runner"]["config"]: cfg["agent_runner"]["config"]["persona"] = {}
                         cfg["agent_runner"]["config"]["persona"]["persona_id"] = pid
+                        if owner_qq:
+                            admins = cfg.setdefault("admins_id", [])
+                            try:
+                                oqq_int = int(owner_qq)
+                                if oqq_int not in admins: admins.insert(0, oqq_int)
+                            except ValueError:
+                                if owner_qq not in admins: admins.insert(0, owner_qq)
                         client.update_default_config(cfg)
 
             # 同时直接落盘更新本地数据库与配置文件，离线与在线均 100% 成功
             offline_ok, offline_msg = save_persona_offline(pid, prompt_final)
 
             if online_saved or offline_ok:
-                self.send_json({"ok": True, "message": f"性格「{pid}」已成功保存并导入！"})
+                self.send_json({"ok": True, "message": f"性格「{pid}」已成功保存并实时同步到 AstrBot！"})
             else:
-                self.send_json({"ok": False, "message": offline_msg}, 500)
+                self.send_json({"ok": False, "message": f"保存失败: {offline_msg}"}, 500)
             return
 
         # 4. Breeze 声音克隆
